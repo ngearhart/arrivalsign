@@ -9,9 +9,11 @@ import { loadFonts } from './webfontloader'
 import vuetify from './vuetify'
 import pinia from '../store'
 import router from '../router'
+import { VueFire, VueFireAuth } from 'vuefire'
 
 // Types
 import type { App } from 'vue'
+import { firebaseApp } from '@/firebase'
 
 export function registerPlugins (app: App) {
   loadFonts()
@@ -19,4 +21,10 @@ export function registerPlugins (app: App) {
     .use(vuetify)
     .use(router)
     .use(pinia)
+    .use(VueFire, {
+      firebaseApp: firebaseApp,
+      modules: [
+        VueFireAuth()
+      ]
+    })
 }
