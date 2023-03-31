@@ -1,7 +1,9 @@
 <template>
-  <HelloWorld />
+  <base-layout>
+    <div>Hi</div>
+  </base-layout>
 </template>
 
 <script lang="ts" setup>
-  import HelloWorld from '@/components/HelloWorld.vue'
+import BaseLayout from '@/components/BaseLayout.vue'
 </script>

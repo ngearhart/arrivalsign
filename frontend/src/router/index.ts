@@ -19,6 +19,12 @@ const routes = [
         meta: { requiresAuth: false },
         component: () => import(/* webpackChunkName: "login" */ '@/views/Login.vue'),
       },
+      {
+        path: '/logged-out',
+        name: 'Logged Out',
+        meta: { requiresAuth: false },
+        component: () => import(/* webpackChunkName: "logged-out" */ '@/views/Logout.vue'),
+      },
     ],
   },
 ]

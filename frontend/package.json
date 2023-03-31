@@ -8,6 +8,7 @@
     "lint": "eslint . --fix --ignore-path .gitignore"
   },
   "dependencies": {
+    "@kyvg/vue3-notification": "^2.9.0",
     "@mdi/font": "7.0.96",
     "firebase": "^9.18.0",
     "pinia": "^2.0.23",
