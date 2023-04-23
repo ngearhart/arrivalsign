@@ -12,7 +12,7 @@ def set_admin(email: str, admin: bool):
 
 def main():
     print('Running user admin task')
-    print(f'Using app {default_app.name}')
+    print(f'Using app {default_app.name} ({default_app.project_id})')
     set_admin(os.environ['EMAIL'], os.environ['ADMIN'] == 'True')
 
 if __name__ == '__main__':
