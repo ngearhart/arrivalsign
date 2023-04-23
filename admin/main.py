@@ -27,7 +27,7 @@ def set_admin(uid: str, admin: bool):
 def main():
     print('Running user admin task')
     print(f'Using app {default_app.name} ({default_app.project_id})')
-    set_admin(os.environ.get('ADMIN') == 'True', email=os.environ.get('EMAIL'), uid=os.environ.get('UID'))
+    set_admin_by_email_or_uid(os.environ.get('ADMIN') == 'True', email=os.environ.get('EMAIL'), uid=os.environ.get('UID'))
 
 if __name__ == '__main__':
     main()
