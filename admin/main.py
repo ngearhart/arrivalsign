@@ -3,7 +3,7 @@ from firebase_admin import auth, _auth_utils
 
 import os
 
-default_app = firebase_admin.initialize_app()
+default_app = firebase_admin.initialize_app(name=os.environ.get('APP_NAME', 'DEFAULT'))
 
 def set_admin_by_email_or_uid(admin: bool, **kwargs):
     if 'email' in kwargs and kwargs['email'] is not None:
