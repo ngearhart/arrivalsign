@@ -4,7 +4,7 @@ name: Build Admin Image
   push:
     branches:
       - master
-      - develop
+      # - develop
 
 env:
   REGISTRY: ghcr.io

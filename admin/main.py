@@ -1,9 +1,10 @@
 import firebase_admin
-from firebase_admin import auth, _auth_utils
+from firebase_admin import auth, _auth_utils, credentials
 
 import os
 
-default_app = firebase_admin.initialize_app(name=os.environ.get('APP_NAME', 'DEFAULT'))
+cred = credentials.Certificate('creds.json')
+default_app = firebase_admin.initialize_app(cred)
 
 def set_admin_by_email_or_uid(admin: bool, **kwargs):
     if 'email' in kwargs and kwargs['email'] is not None:
