@@ -33,7 +33,7 @@ jobs:
     - run: |
         # Set up docker to authenticate
         # via gcloud command-line tool.
-        gcloud auth configure-docker
+        gcloud auth configure-docker us-east4-docker.pkg.dev
     - name: Extract metadata (tags, labels) for Docker
       id: meta
       uses: docker/metadata-action@98669ae865ea3cffbcbaa878cf57c20bbf1c6c38
