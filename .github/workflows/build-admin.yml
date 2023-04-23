@@ -22,10 +22,14 @@ jobs:
         registry: ${{ env.REGISTRY }}
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
-    - uses: GoogleCloudPlatform/github-actions/setup-gcloud@1bee7de035d65ec5da40a31f8589e240eba8fde5
+    - id: 'auth'
+      uses: 'google-github-actions/auth@v1'
       with:
-        version: '270.0.0'
-        service_account_key: ${{ secrets.GCP_KEY }} 
+        credentials_json: '${{ secrets.GCP_KEY }}'
+    - name: 'Set up Cloud SDK'
+      uses: 'google-github-actions/setup-gcloud@v1'
+      with:
+        version: '>= 363.0.0'
     - run: |
         # Set up docker to authenticate
         # via gcloud command-line tool.
