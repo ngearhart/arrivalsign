@@ -11,7 +11,8 @@ def set_admin_by_email_or_uid(admin: bool, **kwargs):
             user: auth.UserRecord = auth.get_user_by_email(kwargs['email'], default_app)
         except _auth_utils.UserNotFoundError:
             print('User not found.')
-            for user in auth.get_users(default_app):
+            listpage: auth.ListUsersPage = auth.list_users(default_app)
+            for user in listpage.iterate_all():
                 print(f' - {user.email}: {user.uid}')
             raise
         set_admin(user.uid, admin)
