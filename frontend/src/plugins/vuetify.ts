@@ -9,6 +9,8 @@ import '@mdi/font/css/materialdesignicons.css'
 import 'vuetify/styles'
 
 import { VDataTable } from 'vuetify/labs/VDataTable'
+import { aliases, mdi } from 'vuetify/iconsets/mdi'
+import { fa } from 'vuetify/iconsets/fa'
 
 // Composables
 import { createVuetify } from 'vuetify'
@@ -27,5 +29,13 @@ export default createVuetify({
         },
       },
     },
+  },
+  icons: {
+    defaultSet: 'mdi',
+    aliases,
+    sets: {
+      mdi,
+      fa,
+    }
   },
 })

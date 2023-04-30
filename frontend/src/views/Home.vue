@@ -7,7 +7,11 @@
           :items="activeWidgets"
           item-value="name"
           class="elevation-1"
-        ></v-data-table>
+        >
+          <template v-slot:item.configure="{ item }">
+            <v-btn color="primary" icon="fa-gear"></v-btn>
+          </template>
+        </v-data-table>
       </template>
     </v-card>
   </base-layout>
@@ -17,29 +21,22 @@
 import BaseLayout from '@/components/BaseLayout.vue'
 import { onMounted, ref, reactive } from 'vue'
 import { useDatabaseList  } from 'vuefire'
-import { ref as dbRef, getDatabase } from 'firebase/database'
+import { ref as dbRef, getDatabase, push } from 'firebase/database'
 
-const activeWidgets = useDatabaseList<GenericWidget>(dbRef(getDatabase(), 'widgets'))
+const widgetDb = dbRef(getDatabase(), 'widgets')
+const activeWidgets = useDatabaseList<GenericWidget>(widgetDb)
 
-const defaultTrain: DCMetroTrainArrivalWidget = {
-  custom_trains: [],
-  name: "DCMetroTrainArrivalWidget",
-  station_id: "K07",
-  enabled: true
-}
-
-
-// activeWidgets.value.push(defaultTrain)
+// push(widgetDb, defaultTrain)
 
 const headers = reactive([
   {
     title: 'Widget Name',
     key: 'name',
   },
-  { title: 'Configure', sortable: false },
+  { title: 'Configure', key: 'configure', sortable: false },
 ])
 
-onMounted(() => {
-})
+// onMounted(() => {
+// })
 
 </script>
