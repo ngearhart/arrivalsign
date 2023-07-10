@@ -43,6 +43,8 @@ const showArrivalWidget = ref(false);
 const showDialog = (item: any) => {
   if (item.value === 'DCMetroTrainArrivalWidget') {
     showArrivalWidget.value = true;
+    console.log(item)
+    // showArrivalWidget.value = true;
   }
 }
 
