@@ -1,5 +1,5 @@
 <template>
-  <v-dialog v-model="open" width="auto">
+  <v-dialog :model-value="open" width="auto">
     <v-card>
       <v-card-text>
         Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore
