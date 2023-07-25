@@ -24,6 +24,7 @@ import { onMounted, ref, reactive } from 'vue'
 import { useDatabaseList  } from 'vuefire'
 import { ref as dbRef, getDatabase, push, set } from 'firebase/database'
 import TrainArrivalEditor from '@/components/TrainArrivalEditor.vue'
+import { GenericWidget } from '@/models'
 
 const widgetDb = dbRef(getDatabase(), 'widgets')
 const activeWidgets = useDatabaseList<GenericWidget>(widgetDb)
