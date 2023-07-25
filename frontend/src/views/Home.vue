@@ -14,7 +14,7 @@
         </v-data-table>
       </template>
     </v-card>
-    <train-arrival-editor :open="showArrivalWidget" @close="showArrivalWidget = false" />
+    <train-arrival-editor v-model="currentStation" :open="showArrivalWidget" @close="closeTrainArrival(false)" @save="closeTrainArrival(true)" />
   </base-layout>
 </template>
 
@@ -22,11 +22,12 @@
 import BaseLayout from '@/components/BaseLayout.vue'
 import { onMounted, ref, reactive } from 'vue'
 import { useDatabaseList  } from 'vuefire'
-import { ref as dbRef, getDatabase, push } from 'firebase/database'
+import { ref as dbRef, getDatabase, push, set } from 'firebase/database'
 import TrainArrivalEditor from '@/components/TrainArrivalEditor.vue'
 
 const widgetDb = dbRef(getDatabase(), 'widgets')
 const activeWidgets = useDatabaseList<GenericWidget>(widgetDb)
+let currentItemId: string | null = null;
 
 // push(widgetDb, defaultTrain)
 
@@ -35,17 +36,35 @@ const headers = reactive([
     title: 'Widget Name',
     key: 'name',
   },
+  {
+    title: 'Id',
+    key: 'id',
+  },
+  {
+    title: 'Station',
+    key: 'station_id',
+    hidden: true,
+  },
   { title: 'Configure', key: 'configure', sortable: false },
 ])
 
 const showArrivalWidget = ref(false);
+const currentStation = ref(0);
 
 const showDialog = (item: any) => {
   if (item.value === 'DCMetroTrainArrivalWidget') {
+    currentItemId = item.columns.id;
+    currentStation.value = item.columns.station_id;
     showArrivalWidget.value = true;
-    console.log(item)
-    // showArrivalWidget.value = true;
   }
+}
+
+const closeTrainArrival = (save: boolean) => {
+  if (save) {
+    console.log(currentStation.value);
+    set(dbRef(getDatabase(), 'widgets/' + currentItemId), { "name": "DCMetroTrainArrivalWidget", "station_id": currentStation.value });
+  }
+  showArrivalWidget.value = false;
 }
 
 // onMounted(() => {

@@ -7,5 +7,9 @@
   </v-app>
 </template>
 
+<style>
+@import "vue-select/dist/vue-select.css";
+</style>
+
 <script setup lang="ts">
 </script>

@@ -1,16 +1,15 @@
 <template>
-  <v-dialog :model-value="open" width="512">
+  <v-dialog :model-value="open" width="512" persistent>
     <v-card>
       <v-card-text>
         <v-container>
           <v-row>
             <v-col cols="12" md="12">
-              <v-autocomplete
-                label="Station"
-                :items="store.STATIONS"
-                item-title="name"
-                item-value="value"
-              ></v-autocomplete>
+              <v-select-2
+                :options="store.STATIONS"
+                v-model="value"
+                label="name"
+              ></v-select-2>
             </v-col>
           </v-row>
         </v-container>
@@ -31,10 +30,22 @@
   
 <script lang="ts" setup>
 
+import { computed } from 'vue'
 import { useAppStore } from '@/store/app'
 
 const store = useAppStore()
-const props = defineProps(['open', 'station_id'])
+const props = defineProps(['open', 'modelValue'])
+const emit = defineEmits(['save', 'update:modelValue'])
+
+const value = computed({
+  get() {
+    return store.STATIONS.find(station => station.code === props.modelValue)
+  },
+  set(value) {
+    emit('update:modelValue', value?.code)
+  }
+})
+
 
 </script>
   
