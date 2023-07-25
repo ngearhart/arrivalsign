@@ -8,11 +8,16 @@
     "lint": "eslint . --fix --ignore-path .gitignore"
   },
   "dependencies": {
+    "@kyvg/vue3-notification": "^2.9.0",
     "@mdi/font": "7.0.96",
+    "@types/vue-select": "^3.16.2",
+    "firebase": "^9.18.0",
     "pinia": "^2.0.23",
     "roboto-fontface": "*",
     "vue": "^3.2.38",
     "vue-router": "^4.0.0",
+    "vue-select": "^4.0.0-beta.6",
+    "vuefire": "^3.1.0",
     "vuetify": "^3.0.0",
     "webfontloader": "^1.0.0"
   },

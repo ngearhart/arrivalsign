@@ -7,6 +7,9 @@
 // Components
 import App from './App.vue'
 
+import VueSelect from "vue-select";
+
+
 // Composables
 import { createApp } from 'vue'
 
@@ -14,6 +17,7 @@ import { createApp } from 'vue'
 import { registerPlugins } from '@/plugins'
 
 const app = createApp(App)
+app.component('v-select-2', VueSelect)
 
 registerPlugins(app)
 
