@@ -4,6 +4,7 @@ import time
 from led import get_matrix, get_frame_canvas
 
 from functools import cache
+import logging
 
 from rgbmatrix import graphics
 
@@ -41,7 +42,7 @@ class MetroApi:
                 'api_key': API_KEY
             }).json()
 
-            print('Received response from WMATA api...')
+            logging.debug('Received response from WMATA api.')
 
             trains = filter(lambda t: t['Group'] == group, train_data['Trains'])
 
@@ -50,7 +51,7 @@ class MetroApi:
             return normalized_results
         except RuntimeError:
             if retry_attempt < RETRIES:
-                print('Failed to connect to WMATA API. Reattempting...')
+                logging.warn('Failed to connect to WMATA API. Reattempting...')
                 # Recursion for retry logic because I don't care about your stack
                 return MetroApi._fetch_train_predictions(station_code, group, retry_attempt + 1)
             else:
