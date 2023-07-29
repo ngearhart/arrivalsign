@@ -31,8 +31,8 @@ class ArrivalWidget(Widget):
         self.offscreen_canvas.Clear()
 
         # header
-        self.graphics.DrawText(self.offscreen_canvas, self.font, 1,
-                                self.LINE_HEIGHT, self.headerColor, "LN  DEST       MIN")
+        graphics.DrawText(self.offscreen_canvas, self.font, 1,
+                          self.LINE_HEIGHT, self.headerColor, "LN  DEST       MIN")
 
         for index, train in enumerate(data[:4]):
             graphics.DrawLine(self.offscreen_canvas, 1, self.LINE_HEIGHT_WITH_PADDING * (index + 2), 1, (self.LINE_HEIGHT_WITH_PADDING * (index + 1) + (self.LINE_HEIGHT_WITH_PADDING - self.LINE_HEIGHT)), train['line_color'])
