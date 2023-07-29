@@ -12,7 +12,7 @@ async def main():
 
     tasks = [widget.loop() for widget in widgets]
 
-    await asyncio.gather(tasks)
+    await asyncio.gather(*tasks)
 
 if __name__ == '__main__':
     asyncio.run(main())

@@ -28,17 +28,17 @@ class ArrivalWidget(Widget):
         data = MetroApi.fetch_train_predictions('D02', '2')
         logging.debug(data)
 
-        offscreen_canvas.Clear()
+        self.offscreen_canvas.Clear()
 
         # header
-        self.graphics.DrawText(offscreen_canvas, self.font, 1,
+        self.graphics.DrawText(self.offscreen_canvas, self.font, 1,
                                 self.LINE_HEIGHT, self.headerColor, "LN  DEST       MIN")
 
         for index, train in enumerate(data[:4]):
-            graphics.DrawLine(offscreen_canvas, 1, self.LINE_HEIGHT_WITH_PADDING * (index + 2), 1, (self.LINE_HEIGHT_WITH_PADDING * (index + 1) + (self.LINE_HEIGHT_WITH_PADDING - self.LINE_HEIGHT)), train['line_color'])
-            graphics.DrawLine(offscreen_canvas, 2, self.LINE_HEIGHT_WITH_PADDING * (index + 2), 2, (self.LINE_HEIGHT_WITH_PADDING * (index + 1) + (self.LINE_HEIGHT_WITH_PADDING - self.LINE_HEIGHT)), train['line_color'])
-            graphics.DrawText(offscreen_canvas, self.font, 5, self.LINE_HEIGHT_WITH_PADDING * (index + 2), train['line_color'], train['line'])
-            graphics.DrawText(offscreen_canvas, self.font, 29, self.LINE_HEIGHT_WITH_PADDING * (index + 2), self.white, train['destination'])
-            graphics.DrawText(offscreen_canvas, self.font, 106, self.LINE_HEIGHT_WITH_PADDING * (index + 2), self.white, train['arrival'])
+            graphics.DrawLine(self.offscreen_canvas, 1, self.LINE_HEIGHT_WITH_PADDING * (index + 2), 1, (self.LINE_HEIGHT_WITH_PADDING * (index + 1) + (self.LINE_HEIGHT_WITH_PADDING - self.LINE_HEIGHT)), train['line_color'])
+            graphics.DrawLine(self.offscreen_canvas, 2, self.LINE_HEIGHT_WITH_PADDING * (index + 2), 2, (self.LINE_HEIGHT_WITH_PADDING * (index + 1) + (self.LINE_HEIGHT_WITH_PADDING - self.LINE_HEIGHT)), train['line_color'])
+            graphics.DrawText(self.offscreen_canvas, self.font, 5, self.LINE_HEIGHT_WITH_PADDING * (index + 2), train['line_color'], train['line'])
+            graphics.DrawText(self.offscreen_canvas, self.font, 29, self.LINE_HEIGHT_WITH_PADDING * (index + 2), self.white, train['destination'])
+            graphics.DrawText(self.offscreen_canvas, self.font, 106, self.LINE_HEIGHT_WITH_PADDING * (index + 2), self.white, train['arrival'])
 
-        offscreen_canvas = self.matrix.SwapOnVSync(offscreen_canvas)
+        self.offscreen_canvas = self.matrix.SwapOnVSync(self.offscreen_canvas)
