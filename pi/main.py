@@ -22,7 +22,7 @@ async def main():
 
 if __name__ == '__main__':
     args = parse_args()
-    logging.basicConfig(level=args.verbose)
+    logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO)
 
     logging.info("Starting arrival sign manager! Press Ctrl+C to exit.")
     try:
