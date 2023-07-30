@@ -1,94 +1,58 @@
 
 ## From https://github.com/metro-sign/dc-metro/blob/main/src/metro_api.py
-import requests
-import os
-import time
 from led import get_matrix, get_frame_canvas
+from widgets import Widget
+import logging
+from db import get_firebase
+from utils import MetroApi
 
 try:
     from rgbmatrix import graphics
 except ImportError:
     from RGBMatrixEmulator import graphics
 
-class MetroApiOnFireException(Exception):
-    pass
+class ArrivalWidget(Widget):
 
-API_URL = "https://api.wmata.com/StationPrediction.svc/json/GetPrediction/"
-API_KEY = os.environ["WMATA_API_KEY"]
-RETRIES = 5
+    sleep_seconds = 10
+    LINE_HEIGHT = 10
+    LINE_HEIGHT_WITH_PADDING = 12
+    WIDGET_NAME = 'DCMetroTrainArrivalWidget'
+    DEFAULT_STATION = 'D02'
 
-class MetroApi:
-    def fetch_train_predictions(station_code: str, group: str) -> list[dict]:
-        return MetroApi._fetch_train_predictions(station_code, group, retry_attempt=0)
+    def __init__(self):
+        self.matrix = get_matrix()
+        self.offscreen_canvas = get_frame_canvas()
+        self.font = graphics.Font()
+        self.font.LoadFont("7x14.bdf")  # line height is 10
+        self.headerColor = graphics.Color(120, 120, 120)
+        self.white = graphics.Color(255, 255, 255)
+        self.firebase = get_firebase()
+        
+    def get_station(self):
+        widgets = self.firebase.get("/widgets", None)
+        for widgetId in widgets:
+            if widgets[widgetId]['name'] == self.WIDGET_NAME and 'station_id' in widgets[widgetId]:
+                logging.debug(widgets[widgetId])
+                return widgets[widgetId]['station_id']
+        logging.warn("Something is wrong with the firebase object. Falling back to default")
+        return self.DEFAULT_STATION
 
-    def _fetch_train_predictions(station_code: str, group: str, retry_attempt: int) -> list[dict]:
-        try:
-            api_url = API_URL + station_code
-            train_data = requests.get(api_url, headers={
-                'api_key': API_KEY
-            }).json()
+    async def update(self):
+        station = self.get_station()
+        data = MetroApi.fetch_train_predictions(station, '2')
+        logging.debug(data)
 
-            print('Received response from WMATA api...')
+        self.offscreen_canvas.Clear()
 
-            trains = filter(lambda t: t['Group'] == group, train_data['Trains'])
+        # header
+        graphics.DrawText(self.offscreen_canvas, self.font, 1,
+                          self.LINE_HEIGHT, self.headerColor, "LN  DEST       MIN")
 
-            normalized_results = list(map(MetroApi._normalize_train_response, trains))
+        for index, train in enumerate(data[:4]):
+            graphics.DrawLine(self.offscreen_canvas, 1, self.LINE_HEIGHT_WITH_PADDING * (index + 2), 1, (self.LINE_HEIGHT_WITH_PADDING * (index + 1) + (self.LINE_HEIGHT_WITH_PADDING - self.LINE_HEIGHT)), train['line_color'])
+            graphics.DrawLine(self.offscreen_canvas, 2, self.LINE_HEIGHT_WITH_PADDING * (index + 2), 2, (self.LINE_HEIGHT_WITH_PADDING * (index + 1) + (self.LINE_HEIGHT_WITH_PADDING - self.LINE_HEIGHT)), train['line_color'])
+            graphics.DrawText(self.offscreen_canvas, self.font, 5, self.LINE_HEIGHT_WITH_PADDING * (index + 2), train['line_color'], train['line'])
+            graphics.DrawText(self.offscreen_canvas, self.font, 29, self.LINE_HEIGHT_WITH_PADDING * (index + 2), self.white, train['destination'])
+            graphics.DrawText(self.offscreen_canvas, self.font, 106, self.LINE_HEIGHT_WITH_PADDING * (index + 2), self.white, train['arrival'])
 
-            return normalized_results
-        except RuntimeError:
-            if retry_attempt < RETRIES:
-                print('Failed to connect to WMATA API. Reattempting...')
-                # Recursion for retry logic because I don't care about your stack
-                return MetroApi._fetch_train_predictions(station_code, group, retry_attempt + 1)
-            else:
-                raise MetroApiOnFireException()
-    
-    def _normalize_train_response(train: dict) -> dict:
-        line = train['Line']
-        destination = train['Destination']
-        arrival = train['Min']
-
-        if destination == 'No Passenger' or destination == 'NoPssenger' or destination == 'ssenger':
-            destination = 'No Psngr'
-
-        return {
-            'line_color': MetroApi._get_line_color(line),
-            'destination': destination,
-            'arrival': arrival
-        }
-    
-    def _get_line_color(line: str) -> int:
-        if line == 'RD':
-            return 0xFF0000
-        elif line == 'OR':
-            return 0xFF5500
-        elif line == 'YL':
-            return 0xFFFF00
-        elif line == 'GR':
-            return 0x00FF00
-        elif line == 'BL':
-            return 0x0000FF
-        else:
-            return 0xAAAAAA
-
-def test():
-    print(MetroApi.fetch_train_predictions('D02', '2'))
-
-def update_screen():
-    matrix = get_matrix()
-    offscreen_canvas = get_frame_canvas()
-    font = graphics.Font()
-    font.LoadFont("../5x7.bdf")
-    textColor = graphics.Color(255, 255, 0)
-    pos = offscreen_canvas.width
-    my_text = "test"
-
-    while True:
-        offscreen_canvas.Clear()
-        len = graphics.DrawText(offscreen_canvas, font, pos, 10, textColor, my_text)
-        pos -= 1
-        if (pos + len < 0):
-            pos = offscreen_canvas.width
-
-        time.sleep(0.05)
-        offscreen_canvas = matrix.SwapOnVSync(offscreen_canvas)
+        self.offscreen_canvas = self.matrix.SwapOnVSync(self.offscreen_canvas)
