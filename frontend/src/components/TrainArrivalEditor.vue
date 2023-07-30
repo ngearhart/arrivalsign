@@ -154,7 +154,7 @@
         <v-container>
           <v-row>
             <v-col cols="12" md="12" style="text-align: center;">
-              <v-btn color="primary" @click="$emit('save')">Save</v-btn>
+              <v-btn color="primary" @click="$emit('save', customMessages)">Save</v-btn>
               <v-btn color="gray" @click="$emit('close')">Cancel</v-btn>
             </v-col>
           </v-row>
@@ -166,20 +166,15 @@
   
 <script lang="ts" setup>
 
-import { computed, reactive, ref, watch, nextTick } from 'vue'
+import { computed, reactive, ref, watch, nextTick , onMounted} from 'vue'
 import { useAppStore } from '@/store/app'
 
 import { notify } from '@kyvg/vue3-notification'
-
-interface MessageItem {
-  message: string,
-  time: Date,
-  sticky: boolean
-}
+import { MessageItem } from '@/models'
 
 const store = useAppStore()
-const props = defineProps(['open', 'modelValue'])
-const emit = defineEmits(['save', 'update:modelValue'])
+const props = defineProps(['open', 'modelValue', 'initialMessageList'])
+const emit = defineEmits(['save:customMessages', 'update:modelValue'])
 
 const headers = reactive([
   {
@@ -281,6 +276,12 @@ const save = () => {
 
 const formatDatetime = (value: string) => new Date(value).toLocaleDateString() + ' ' + new Date(value).toLocaleTimeString()
 
+watch(() => props.open, (newOpen: boolean) => {
+  if (newOpen) {
+    customMessages.splice(0, customMessages.length) // clear
+    props.initialMessageList.forEach((msg: MessageItem) => customMessages.push({...msg, time: new Date(msg.time)}))
+  }
+})
 
 </script>
   
