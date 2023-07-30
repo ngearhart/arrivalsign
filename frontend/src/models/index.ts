@@ -20,10 +20,3 @@ interface DCMetroTrainArrivalWidget extends GenericWidget {
 interface AlertMessage extends GenericWidget {
     text: string
 }
-
-export type {
-    GenericWidget,
-    CustomTrain,
-    DCMetroTrainArrivalWidget,
-    AlertMessage
-}
