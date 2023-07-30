@@ -1,10 +1,7 @@
 from firebase import firebase
-from dotenv import load_dotenv
 from os import environ
 import json
 from functools import cache
-
-load_dotenv()
 
 ## Verify environment
 ENV_VAR_NAMES = {
