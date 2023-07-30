@@ -5,6 +5,7 @@ from widgets import Widget
 import logging
 from db import get_firebase
 from utils import MetroApi
+from datetime import datetime
 
 try:
     from rgbmatrix import graphics
@@ -18,6 +19,7 @@ class ArrivalWidget(Widget):
     LINE_HEIGHT_WITH_PADDING = 12
     WIDGET_NAME = 'DCMetroTrainArrivalWidget'
     DEFAULT_STATION = 'D02'
+    MAX_DISPLAY = 4
 
     def __init__(self):
         self.matrix = get_matrix()
@@ -28,18 +30,67 @@ class ArrivalWidget(Widget):
         self.white = graphics.Color(255, 255, 255)
         self.firebase = get_firebase()
         
-    def get_station(self):
+    def get_fb_config(self):
         widgets = self.firebase.get("/widgets", None)
         for widgetId in widgets:
-            if widgets[widgetId]['name'] == self.WIDGET_NAME and 'station_id' in widgets[widgetId]:
+            if widgets[widgetId]['name'] == self.WIDGET_NAME:
                 logging.debug(widgets[widgetId])
-                return widgets[widgetId]['station_id']
+                return widgets[widgetId]
+
+    def get_station(self):
+        fb_obj = self.get_fb_config()
+        if fb_obj is not None and 'station_id' in fb_obj:
+            return fb_obj['station_id']
         logging.warn("Something is wrong with the firebase object. Falling back to default")
         return self.DEFAULT_STATION
 
-    async def update(self):
+    def get_custom_messages(self):
+        fb_obj = self.get_fb_config()
+        if fb_obj is not None and 'messages' in fb_obj:
+            return fb_obj['messages']
+        return []
+
+    def get_lines_to_display(self):
         station = self.get_station()
-        data = MetroApi.fetch_train_predictions(station, '2')
+        train_data = MetroApi.fetch_train_predictions(station, '2')[:self.MAX_DISPLAY]
+
+        custom_messages = self.get_custom_messages()
+
+        # Insert all non-sticky where they should be in the sorted list
+        for message in custom_messages:
+            arrival_time = datetime.fromtimestamp(message['time'] / 1000.0)
+            if datetime.now() <= arrival_time:
+                test = arrival_time - datetime.now()
+                arrival_msg = str(test.seconds // 60)
+                if arrival_msg == '0':
+                    arrival_msg = 'ARR'
+                train_data.append({
+                    'line': 'TS',
+                    'line_color': MetroApi._get_line_color('TS'),
+                    'destination': message['message'],
+                    'arrival': arrival_msg,
+                    'arrival_timestamp': arrival_time,
+                    'sticky': message['sticky'] == 'true'
+                })
+        train_data.sort(key=MetroApi._sort)
+
+        # Pop extra items that aren't sticky
+        while len(train_data) > self.MAX_DISPLAY:
+            # If we only have sticky messages, break out
+            if all([msg.get('sticky', False) for msg in train_data]):
+                break
+
+            # Otherwise we have real trains / non sticky messages. Remove them!
+            # Find the first non-sticky at the end of the list
+            for i in range(len(train_data)):
+                if not train_data[i].get('sticky', False):
+                    train_data.pop(i)
+                    break
+
+        return train_data
+
+    async def update(self):
+        data = self.get_lines_to_display()
         logging.debug(data)
 
         self.offscreen_canvas.Clear()
@@ -48,7 +99,7 @@ class ArrivalWidget(Widget):
         graphics.DrawText(self.offscreen_canvas, self.font, 1,
                           self.LINE_HEIGHT, self.headerColor, "LN  DEST       MIN")
 
-        for index, train in enumerate(data[:4]):
+        for index, train in enumerate(data):
             graphics.DrawLine(self.offscreen_canvas, 1, self.LINE_HEIGHT_WITH_PADDING * (index + 2), 1, (self.LINE_HEIGHT_WITH_PADDING * (index + 1) + (self.LINE_HEIGHT_WITH_PADDING - self.LINE_HEIGHT)), train['line_color'])
             graphics.DrawLine(self.offscreen_canvas, 2, self.LINE_HEIGHT_WITH_PADDING * (index + 2), 2, (self.LINE_HEIGHT_WITH_PADDING * (index + 1) + (self.LINE_HEIGHT_WITH_PADDING - self.LINE_HEIGHT)), train['line_color'])
             graphics.DrawText(self.offscreen_canvas, self.font, 5, self.LINE_HEIGHT_WITH_PADDING * (index + 2), train['line_color'], train['line'])
