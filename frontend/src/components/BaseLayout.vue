@@ -16,20 +16,24 @@
   </v-app>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { getCurrentUser } from "vuefire";
 import { onMounted, reactive } from "vue";
 import { getAuth, signOut } from 'firebase/auth'
 import { useRouter } from 'vue-router'
 
-const userData = reactive({
+interface UserDataType {
+  name: string | null | undefined
+}
+
+const userData: UserDataType = reactive({
   name: "",
 });
 const router = useRouter();
 
 onMounted(async () => {
   const currentUser = await getCurrentUser();
-  userData.name = currentUser.displayName;
+  userData.name = currentUser?.displayName;
 });
 
 const logout = () => {
