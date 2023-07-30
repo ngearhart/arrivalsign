@@ -1,18 +1,17 @@
 #!/usr/bin/env python
 # Display a runtext with double-buffering.
-from rgbmatrix import graphics
-import time
+# from rgbmatrix import graphics
 
-
-import argparse
 import time
 from functools import cache
 import sys
 import os
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__) + '/..'))
-from rgbmatrix import RGBMatrix, RGBMatrixOptions
-
+try:
+    from rgbmatrix import RGBMatrix, RGBMatrixOptions
+except ImportError:
+    from RGBMatrixEmulator import RGBMatrix, RGBMatrixOptions
 
 @cache
 def get_matrix() -> RGBMatrix:

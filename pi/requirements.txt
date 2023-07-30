@@ -1,2 +1,4 @@
 firebase
 python-dotenv
+RGBMatrixEmulator
+Pillow

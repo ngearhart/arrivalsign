@@ -5,7 +5,10 @@ import os
 import time
 from led import get_matrix, get_frame_canvas
 
-from rgbmatrix import graphics
+try:
+    from rgbmatrix import graphics
+except ImportError:
+    from RGBMatrixEmulator import graphics
 
 class MetroApiOnFireException(Exception):
     pass
