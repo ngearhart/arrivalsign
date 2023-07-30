@@ -18,6 +18,7 @@
           <v-row>
             <v-col>
               <v-data-table
+                dense
                 :headers="headers"
                 :items="customMessages"
                 :sort-by="[{ key: 'time', order: 'asc' }]"
@@ -37,6 +38,7 @@
                     <v-dialog
                       v-model="dialog"
                       max-width="500px"
+                      persistent
                     >
                       <template v-slot:activator="{ props }">
                         <v-btn
@@ -71,20 +73,17 @@
                                 sm="6"
                                 md="4"
                               >
-                                <v-text-field
-                                  v-model="editedItem.time"
-                                  label="Time"
-                                ></v-text-field>
+                                <vue-datepicker :show-now-button="true" :teleport="true" v-model="editedItem.time" />
                               </v-col>
                               <v-col
                                 cols="12"
                                 sm="6"
                                 md="4"
                               >
-                                <v-text-field
+                                <v-checkbox
                                   v-model="editedItem.sticky"
                                   label="Sticky"
-                                ></v-text-field>
+                                ></v-checkbox>
                               </v-col>
                             </v-row>
                           </v-container>
@@ -109,7 +108,7 @@
                         </v-card-actions>
                       </v-card>
                     </v-dialog>
-                    <v-dialog v-model="dialogDelete" max-width="500px">
+                    <v-dialog v-model="dialogDelete" max-width="500px" persistent>
                       <v-card>
                         <v-card-title class="text-h5">Are you sure you want to delete this item?</v-card-title>
                         <v-card-actions>
@@ -121,6 +120,12 @@
                       </v-card>
                     </v-dialog>
                   </v-toolbar>
+                </template>
+                <template v-slot:item.sticky="{ item }">
+                  {{ item.value.sticky ? '✅' : '❌' }}
+                </template>
+                <template v-slot:item.time="{ item }">
+                  {{ formatDatetime(item.value.time) }}
                 </template>
                 <template v-slot:item.actions="{ item }">
                   <v-icon
@@ -138,12 +143,7 @@
                   </v-icon>
                 </template>
                 <template v-slot:no-data>
-                  <v-btn
-                    color="primary"
-                    @click="initialize"
-                  >
-                    Reset
-                  </v-btn>
+                  <p style="text-align: center; font-style: italic; color: gray">No messages found</p>
                 </template>
               </v-data-table>
             </v-col>
@@ -169,9 +169,11 @@
 import { computed, reactive, ref, watch, nextTick } from 'vue'
 import { useAppStore } from '@/store/app'
 
+import { notify } from '@kyvg/vue3-notification'
+
 interface MessageItem {
   message: string,
-  time: number,
+  time: Date,
   sticky: boolean
 }
 
@@ -200,12 +202,12 @@ const customMessages = reactive<MessageItem[]>([])
 const editedIndex = ref(-1)
 const editedItem = ref<MessageItem>({
   message: '',
-  time: 0,
+  time: new Date(),
   sticky: false
 })
 const defaultItem = ref<MessageItem>({
   message: '',
-  time: 0,
+  time: new Date(),
   sticky: false
 })
 
@@ -262,6 +264,13 @@ const closeDelete = () => {
 }
 
 const save = () => {
+  if (!editedItem.value.message) {
+    notify({
+      'title': 'Failure',
+      'text': 'Message must not be empty.'
+    })
+    return
+  }
   if (editedIndex.value > -1) {
     Object.assign(customMessages[editedIndex.value], editedItem.value)
   } else {
@@ -269,6 +278,8 @@ const save = () => {
   }
   close()
 }
+
+const formatDatetime = (value: string) => new Date(value).toLocaleDateString() + ' ' + new Date(value).toLocaleTimeString()
 
 
 </script>
