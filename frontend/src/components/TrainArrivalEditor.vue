@@ -122,10 +122,10 @@
                   </v-toolbar>
                 </template>
                 <template v-slot:item.sticky="{ item }">
-                  {{ item.value.sticky ? '✅' : '❌' }}
+                  {{ item.raw.sticky ? '✅' : '❌' }}
                 </template>
                 <template v-slot:item.time="{ item }">
-                  {{ formatDatetime(item.value.time) }}
+                  {{ formatDatetime(item.raw.time) }}
                 </template>
                 <template v-slot:item.actions="{ item }">
                   <v-icon
