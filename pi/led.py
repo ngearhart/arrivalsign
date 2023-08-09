@@ -23,6 +23,7 @@ def get_matrix() -> RGBMatrix:
     options.chain_length = 4
     options.pixel_mapper_config = 'U-mapper'
     options.drop_privileges = True
+    options.limit_refresh_rate_hz = 60
 
     return RGBMatrix(options = options)
 
