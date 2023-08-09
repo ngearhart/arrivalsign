@@ -65,7 +65,7 @@ class ArrivalWidget(Widget):
                 if arrival_msg == '0':
                     arrival_msg = 'ARR'
                 train_data.append({
-                    'line': 'TS',
+                    'line': '-',
                     'line_color': MetroApi._get_line_color('TS'),
                     'destination': message['message'],
                     'arrival': arrival_msg,
