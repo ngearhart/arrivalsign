@@ -97,7 +97,7 @@ class ArrivalWidget(Widget):
 
         # header
         graphics.DrawText(self.offscreen_canvas, self.font, 1,
-                          self.LINE_HEIGHT, self.headerColor, "LN  DEST       MIN")
+                          self.LINE_HEIGHT, self.headerColor, "LN  DEST    LV MIN")
 
         for index, train in enumerate(data):
             graphics.DrawLine(self.offscreen_canvas, 1, self.LINE_HEIGHT_WITH_PADDING * (index + 2), 1, (self.LINE_HEIGHT_WITH_PADDING * (index + 1) + (self.LINE_HEIGHT_WITH_PADDING - self.LINE_HEIGHT)), train['line_color'])
@@ -106,7 +106,11 @@ class ArrivalWidget(Widget):
             graphics.DrawText(self.offscreen_canvas, self.font, 29, self.LINE_HEIGHT_WITH_PADDING * (index + 2), self.white, train['destination'])
             arrival = train['arrival']
             if str(arrival).isnumeric():
-                arrival = max(int(arrival), 999)
-            graphics.DrawText(self.offscreen_canvas, self.font, 106, self.LINE_HEIGHT_WITH_PADDING * (index + 2), self.white, train['arrival'])
+                arrival_int = int(arrival)
+                arrival = str(min(arrival_int, 999))
+                if arrival_int > 15:
+                    leave = str(arrival_int - 15).rjust(2, ' ')
+                    graphics.DrawText(self.offscreen_canvas, self.font, 103, self.LINE_HEIGHT_WITH_PADDING * (index + 2), self.white, leave)
+            graphics.DrawText(self.offscreen_canvas, self.font, 106, self.LINE_HEIGHT_WITH_PADDING * (index + 2), self.white, arrival)
 
         self.offscreen_canvas = self.matrix.SwapOnVSync(self.offscreen_canvas)
