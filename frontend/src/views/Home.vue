@@ -14,7 +14,7 @@
         </v-data-table>
       </template>
     </v-card>
-    <train-arrival-editor v-model="currentStation" :open="showArrivalWidget" @close="closeTrainArrival(false)" @save="closeTrainArrival(true)" />
+    <train-arrival-editor v-model="currentStation" :initialMessageList="currentMessageList" :open="showArrivalWidget" @close="closeTrainArrival(false, null)" @save="(val: MessageItem[]) => closeTrainArrival(true, val)" />
   </base-layout>
 </template>
 
@@ -24,7 +24,7 @@ import { onMounted, ref, reactive } from 'vue'
 import { useDatabaseList  } from 'vuefire'
 import { ref as dbRef, getDatabase, push, set } from 'firebase/database'
 import TrainArrivalEditor from '@/components/TrainArrivalEditor.vue'
-import { GenericWidget } from '@/models'
+import { GenericWidget, MessageItem } from '@/models'
 
 const widgetDb = dbRef(getDatabase(), 'widgets')
 const activeWidgets = useDatabaseList<GenericWidget>(widgetDb)
@@ -37,33 +37,35 @@ const headers = reactive([
     title: 'Widget Name',
     key: 'name',
   },
-  {
-    title: 'Id',
-    key: 'id',
-  },
-  {
-    title: 'Station',
-    key: 'station_id',
-    hidden: true,
-  },
   { title: 'Configure', key: 'configure', sortable: false },
 ])
 
 const showArrivalWidget = ref(false);
 const currentStation = ref(0);
+const currentMessageList = ref([]);
 
 const showDialog = (item: any) => {
   if (item.value === 'DCMetroTrainArrivalWidget') {
-    currentItemId = item.columns.id;
-    currentStation.value = item.columns.station_id;
+    // console.log(item.raw)
+    currentItemId = item.raw.id;
+    currentStation.value = item.raw.station_id;
+    currentMessageList.value = item.raw.messages || [];
     showArrivalWidget.value = true;
   }
 }
 
-const closeTrainArrival = (save: boolean) => {
+const closeTrainArrival = (save: boolean, messages: MessageItem[] | null) => {
   if (save) {
     console.log(currentStation.value);
-    set(dbRef(getDatabase(), 'widgets/' + currentItemId), { "name": "DCMetroTrainArrivalWidget", "station_id": currentStation.value });
+    const newObj: any = {
+      "name": "DCMetroTrainArrivalWidget",
+      "station_id": currentStation.value,
+      "messages": []
+    }
+    if (messages !== null && messages.length > 0) {
+      newObj.messages = messages.map(msg => ({...msg, time: msg.time.getTime()}))
+    }
+    set(dbRef(getDatabase(), 'widgets/' + currentItemId), newObj);
   }
   showArrivalWidget.value = false;
 }

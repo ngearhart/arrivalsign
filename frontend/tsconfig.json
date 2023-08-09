@@ -13,13 +13,12 @@
     "lib": ["ESNext", "DOM"],
     "skipLibCheck": true,
     "noEmit": true,
+    "allowJs": true,
     "paths": {
       "@/*": [
        "src/*"
       ]
-    },
-    "allowJs": true,
-    "checkJs": true
+     }
   },
   "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.vue"],
   "references": [{ "path": "./tsconfig.node.json" }],

@@ -11,6 +11,7 @@
     "@kyvg/vue3-notification": "^2.9.0",
     "@mdi/font": "7.0.96",
     "@types/vue-select": "^3.16.2",
+    "@vuepic/vue-datepicker": "^5.4.0",
     "firebase": "^9.18.0",
     "pinia": "^2.0.23",
     "roboto-fontface": "*",
