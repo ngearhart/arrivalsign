@@ -6,6 +6,13 @@ import argparse
 from widgets.arrival import ArrivalWidget
 import asyncio
 
+try:
+    import rgbmatrix
+except ImportError:
+    print("Hey! Looks like you are emulating the RGBMatrix. Enabling nest_asyncio.")
+    import nest_asyncio
+    nest_asyncio.apply()
+
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("-v", "--verbose", action="store_true", default=False)

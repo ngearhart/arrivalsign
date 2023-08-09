@@ -21,9 +21,16 @@ interface AlertMessage extends GenericWidget {
     text: string
 }
 
+interface MessageItem {
+    message: string,
+    time: Date,
+    sticky: boolean
+}
+
 export type {
     GenericWidget,
     CustomTrain,
     DCMetroTrainArrivalWidget,
-    AlertMessage
+    AlertMessage,
+    MessageItem
 }

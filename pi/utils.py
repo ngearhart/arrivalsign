@@ -2,11 +2,15 @@ import requests
 import os
 import time
 from led import get_matrix, get_frame_canvas
+from datetime import datetime, timedelta
 
 from functools import cache
 import logging
 
-from rgbmatrix import graphics
+try:
+    from rgbmatrix import graphics
+except ImportError:
+    from RGBMatrixEmulator import graphics
 
 class MetroApiOnFireException(Exception):
     pass
@@ -62,6 +66,8 @@ class MetroApi:
         destination = train['Destination']
         arrival = train['Min']
 
+        arrival_is_now = not arrival.isnumeric()
+
         if destination == 'No Passenger' or destination == 'NoPssenger' or destination == 'ssenger':
             destination = 'No Psngr'
 
@@ -69,7 +75,8 @@ class MetroApi:
             'line': line,
             'line_color': MetroApi._get_line_color(line),
             'destination': destination,
-            'arrival': arrival
+            'arrival': arrival,
+            'arrival_timestamp': datetime.now() + timedelta(minutes=0 if arrival_is_now else int(arrival))
         }
     
     @cache

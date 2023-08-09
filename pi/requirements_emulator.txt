@@ -1,0 +1,4 @@
+-r requirements.txt
+RGBMatrixEmulator
+Pillow
+nest-asyncio
