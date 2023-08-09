@@ -52,7 +52,11 @@ class ArrivalWidget(Widget):
 
     def get_lines_to_display(self):
         station = self.get_station()
-        train_data = MetroApi.fetch_train_predictions(station, '2')[:self.MAX_DISPLAY]
+        train_data_1 = MetroApi.fetch_train_predictions(station, '1')
+        train_data_2 = MetroApi.fetch_train_predictions(station, '2')
+        
+        train_data = train_data_1 + train_data_2
+        train_data = sorted(train_data, key=MetroApi._sort)[:self.MAX_DISPLAY]
 
         custom_messages = self.get_custom_messages()
 
@@ -109,7 +113,7 @@ class ArrivalWidget(Widget):
                 arrival_int = int(arrival)
                 arrival = str(min(arrival_int, 999))
                 if arrival_int > 15 and arrival_int < 99:
-                    leave = str(arrival_int - 15).rjust(2, ' ')
+                    leave = str(arrival_int - 15)
                     graphics.DrawText(self.offscreen_canvas, self.font, 84, self.LINE_HEIGHT_WITH_PADDING * (index + 2), self.white, leave)
                 else:
                     graphics.DrawText(self.offscreen_canvas, self.font, 84, self.LINE_HEIGHT_WITH_PADDING * (index + 2), self.white, '- ')
