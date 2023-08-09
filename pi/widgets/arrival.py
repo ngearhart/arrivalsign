@@ -108,9 +108,11 @@ class ArrivalWidget(Widget):
             if str(arrival).isnumeric():
                 arrival_int = int(arrival)
                 arrival = str(min(arrival_int, 999))
-                if arrival_int > 15:
+                if arrival_int > 15 and arrival_int < 99:
                     leave = str(arrival_int - 15).rjust(2, ' ')
-                    graphics.DrawText(self.offscreen_canvas, self.font, 103, self.LINE_HEIGHT_WITH_PADDING * (index + 2), self.white, leave)
+                    graphics.DrawText(self.offscreen_canvas, self.font, 84, self.LINE_HEIGHT_WITH_PADDING * (index + 2), self.white, leave)
+                else:
+                    graphics.DrawText(self.offscreen_canvas, self.font, 84, self.LINE_HEIGHT_WITH_PADDING * (index + 2), self.white, '- ')
             graphics.DrawText(self.offscreen_canvas, self.font, 106, self.LINE_HEIGHT_WITH_PADDING * (index + 2), self.white, arrival)
 
         self.offscreen_canvas = self.matrix.SwapOnVSync(self.offscreen_canvas)
