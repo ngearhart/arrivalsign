@@ -27,8 +27,8 @@ async def try_connect():
 
 
 async def loading():
-    generator = loading_generator()
     async def print_loading():
+        generator = loading_generator()
         while True:
             next(generator)
             await asyncio.sleep(0.1)

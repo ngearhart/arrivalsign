@@ -45,6 +45,7 @@ def loading_generator(length=5, depth=3):
             for y in range(depth):
                 offscreen_canvas.SetPixel(index + x, y, primary.red, primary.green, primary.blue)
         offscreen_canvas = matrix.SwapOnVSync(offscreen_canvas)
+        index += 1
         yield
 
 # offscreen_canvas = self.matrix.CreateFrameCanvas()
