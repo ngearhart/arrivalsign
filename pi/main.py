@@ -32,7 +32,7 @@ async def loading():
         while True:
             next(generator)
             await asyncio.sleep(0.1)
-    await asyncio.gather(print_loading, try_connect)
+    await asyncio.gather(print_loading(), try_connect())
 
 
 async def main():
