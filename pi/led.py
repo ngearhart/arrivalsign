@@ -32,13 +32,15 @@ def get_frame_canvas():
     return get_matrix().CreateFrameCanvas()
 
 
-def loading_generator(length=5, depth=4, falloff=5):
+def loading_generator(length=5, depth=4):
     matrix = get_matrix()
     offscreen_canvas = get_frame_canvas()
     # font = graphics.Font()
     # font.LoadFont("7x14.bdf")  # line height is 10
     headerColor = graphics.Color(120, 120, 120)
     index = 0
+    falloff = 30
+    multiplier = 0.9
     while True:
         offscreen_canvas.Clear()
         for y in range(depth):
@@ -46,7 +48,7 @@ def loading_generator(length=5, depth=4, falloff=5):
             for x in range(length):
                 offscreen_canvas.SetPixel(index + x, y, primary.red, primary.green, primary.blue)
             for x in range(falloff):
-                color_adjust_brightness(primary, 0.5, True)
+                color_adjust_brightness(primary, multiplier, True)
                 offscreen_canvas.SetPixel(index - x, y, primary.red, primary.green, primary.blue)
         offscreen_canvas = matrix.SwapOnVSync(offscreen_canvas)
         index += 1
