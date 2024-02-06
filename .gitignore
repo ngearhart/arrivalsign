@@ -2,3 +2,4 @@
 venv
 creds.json
 *.pyc
+backup.tar.gz

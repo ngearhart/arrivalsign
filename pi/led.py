@@ -6,12 +6,13 @@ import time
 from functools import cache
 import sys
 import os
+from asyncio import sleep
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__) + '/..'))
 try:
-    from rgbmatrix import RGBMatrix, RGBMatrixOptions
+    from rgbmatrix import RGBMatrix, RGBMatrixOptions, graphics
 except ImportError:
-    from RGBMatrixEmulator import RGBMatrix, RGBMatrixOptions
+    from RGBMatrixEmulator import RGBMatrix, RGBMatrixOptions, graphics
 
 @cache
 def get_matrix() -> RGBMatrix:
@@ -29,6 +30,22 @@ def get_matrix() -> RGBMatrix:
 @cache
 def get_frame_canvas():
     return get_matrix().CreateFrameCanvas()
+
+
+def loading_generator(length=5, depth=3):
+    matrix = get_matrix()
+    offscreen_canvas = get_frame_canvas()
+    # font = graphics.Font()
+    # font.LoadFont("7x14.bdf")  # line height is 10
+    headerColor = graphics.Color(120, 120, 120)
+    primary = graphics.Color(255, 255, 255)
+    index = 0
+    while True:
+        for x in range(length):
+            for y in range(depth):
+                offscreen_canvas.SetPixel(index + x, y, primary.red, primary.green, primary.blue)
+        offscreen_canvas = matrix.SwapOnVSync(offscreen_canvas)
+        yield
 
 # offscreen_canvas = self.matrix.CreateFrameCanvas()
 # font = graphics.Font()

@@ -5,6 +5,7 @@ import logging
 import argparse
 from widgets.arrival import ArrivalWidget
 import asyncio
+from led import loading_generator
 
 try:
     import rgbmatrix
@@ -18,7 +19,25 @@ def parse_args():
     parser.add_argument("-v", "--verbose", action="store_true", default=False)
     return parser.parse_args()
 
+
+async def try_connect():
+    while True:
+        print("hi")
+        await asyncio.sleep(5)
+
+
+async def loading():
+    generator = loading_generator()
+    async def print_loading():
+        while True:
+            next(generator)
+            await asyncio.sleep(0.1)
+    await asyncio.gather(print_loading, try_connect)
+
+
 async def main():
+    await loading()
+
     widgets = [
         ArrivalWidget()
     ]

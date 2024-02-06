@@ -40,7 +40,7 @@ class ArrivalWidget(Widget):
             try:
                 return self.firebase.get(url, name)
             except exceptions.ConnectionError:
-                logging.debug("Firebase connection error, retrying...")
+                logging.warn("Firebase connection error, retrying...")
                 await sleep(SLEEP_SECONDS)
         return None
 
