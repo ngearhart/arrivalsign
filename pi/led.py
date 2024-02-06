@@ -46,11 +46,22 @@ def loading_generator(length=5, depth=4, falloff=5):
             for x in range(length):
                 offscreen_canvas.SetPixel(index + x, y, primary.red, primary.green, primary.blue)
             for x in range(falloff):
-                primary.adjust_brightness(0.5, True)
+                color_adjust_brightness(primary, 0.5, True)
                 offscreen_canvas.SetPixel(index - x, y, primary.red, primary.green, primary.blue)
         offscreen_canvas = matrix.SwapOnVSync(offscreen_canvas)
         index += 1
         yield
+
+
+def color_adjust_brightness(color, alpha, to_int = False):
+    color.red   *= alpha
+    color.green *= alpha
+    color.blue  *= alpha
+
+    if to_int:
+        color.red   = int(color.red)
+        color.green = int(color.green)
+        color.blue  = int(color.blue)
 
 # offscreen_canvas = self.matrix.CreateFrameCanvas()
 # font = graphics.Font()
