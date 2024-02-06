@@ -39,7 +39,7 @@ def loading_generator(length=5, depth=4):
     # font.LoadFont("7x14.bdf")  # line height is 10
     headerColor = graphics.Color(120, 120, 120)
     index = 0
-    falloff = 30
+    falloff = 50
     multiplier = 0.9
     while True:
         offscreen_canvas.Clear()
