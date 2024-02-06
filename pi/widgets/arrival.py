@@ -6,6 +6,8 @@ import logging
 from db import get_firebase
 from utils import MetroApi
 from datetime import datetime
+from requests import exceptions
+from asyncio import sleep
 
 try:
     from rgbmatrix import graphics
@@ -30,35 +32,49 @@ class ArrivalWidget(Widget):
         self.white = graphics.Color(255, 255, 255)
         self.firebase = get_firebase()
         
-    def get_fb_config(self):
-        widgets = self.firebase.get("/widgets", None)
+
+    async def _firebase_get_with_retries(self, url, name):
+        RETRIES = 5
+        SLEEP_SECONDS = 5
+        for _ in range(RETRIES):
+            try:
+                return self.firebase.get(url, name)
+            except exceptions.ConnectionError:
+                logging.debug("Firebase connection error, retrying...")
+                await sleep(SLEEP_SECONDS)
+        return None
+
+    async def get_fb_config(self):
+        # The following is fraught for error
+        widgets = await self._firebase_get_with_retries("/widgets", None)
         for widgetId in widgets:
             if widgets[widgetId]['name'] == self.WIDGET_NAME:
                 logging.debug(widgets[widgetId])
                 return widgets[widgetId]
+        return None
 
-    def get_station(self):
-        fb_obj = self.get_fb_config()
+    async def get_station(self):
+        fb_obj = await self.get_fb_config()
         if fb_obj is not None and 'station_id' in fb_obj:
             return fb_obj['station_id']
         logging.warn("Something is wrong with the firebase object. Falling back to default")
         return self.DEFAULT_STATION
 
-    def get_custom_messages(self):
-        fb_obj = self.get_fb_config()
+    async def get_custom_messages(self):
+        fb_obj = await self.get_fb_config()
         if fb_obj is not None and 'messages' in fb_obj:
             return fb_obj['messages']
         return []
 
-    def get_lines_to_display(self):
-        station = self.get_station()
+    async def get_lines_to_display(self):
+        station = await self.get_station()
         train_data_1 = MetroApi.fetch_train_predictions(station, '1')
         train_data_2 = MetroApi.fetch_train_predictions(station, '2')
         
         train_data = train_data_1 + train_data_2
         train_data = sorted(train_data, key=MetroApi._sort)[:self.MAX_DISPLAY]
 
-        custom_messages = self.get_custom_messages()
+        custom_messages = await self.get_custom_messages()
 
         # Insert all non-sticky where they should be in the sorted list
         for message in custom_messages:
@@ -94,7 +110,7 @@ class ArrivalWidget(Widget):
         return train_data
 
     async def update(self):
-        data = self.get_lines_to_display()
+        data = await self.get_lines_to_display()
         logging.debug(data)
 
         self.offscreen_canvas.Clear()
