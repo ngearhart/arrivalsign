@@ -62,22 +62,26 @@ LENGTH = 64 * 2
 WIDTH = 32 * 2
 
 def set_pixel_along_border(canvas, x, depth, color):
+    x = x % (LENGTH * 2 + WIDTH * 2)
     # Top section
-    if 0 < x < LENGTH:
+    if 0 <= x < LENGTH:
         for y in range(depth):
             canvas.SetPixel(x, y, color.red, color.green, color.blue)
     # Bottom section
-    elif LENGTH + WIDTH < x < LENGTH * 2 + WIDTH:
+    elif LENGTH + WIDTH <= x < LENGTH * 2 + WIDTH:
         for y in range(depth):
-            canvas.SetPixel(LENGTH * 2 + WIDTH - x, WIDTH - y, color.red, color.green, color.blue)
+            canvas.SetPixel(LENGTH * 2 + WIDTH - x, WIDTH - y - 1, color.red, color.green, color.blue)
     # Right side
-    elif LENGTH < x < LENGTH + WIDTH:
+    elif LENGTH <= x < LENGTH + WIDTH:
         for y in range(depth):
-            canvas.SetPixel(WIDTH - y, x - LENGTH, color.red, color.green, color.blue)
+            canvas.SetPixel(LENGTH - y - 1, x - LENGTH, color.red, color.green, color.blue)
     # Left side
+    # elif LENGTH * 2 + WIDTH <= x < LENGTH * 2 + WIDTH * 2:
     else:
         for y in range(depth):
-            canvas.SetPixel(WIDTH - y, LENGTH * 2 + WIDTH - x, color.red, color.green, color.blue)
+            canvas.SetPixel(y, LENGTH * 2 + WIDTH * 2 - x, color.red, color.green, color.blue)
+    # else:
+    #     print(x)
 
 
 def color_adjust_brightness(color, alpha, to_int = False):
