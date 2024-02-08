@@ -43,16 +43,41 @@ def loading_generator(length=5, depth=4):
     multiplier = 0.9
     while True:
         offscreen_canvas.Clear()
-        for y in range(depth):
-            primary = graphics.Color(255, 255, 255)
-            for x in range(length):
-                offscreen_canvas.SetPixel(index + x, y, primary.red, primary.green, primary.blue)
-            for x in range(falloff):
-                color_adjust_brightness(primary, multiplier, True)
-                offscreen_canvas.SetPixel(index - x, y, primary.red, primary.green, primary.blue)
+        primary = graphics.Color(255, 255, 255)
+        for x in range(length):
+            set_pixel_along_border(offscreen_canvas, index + x, depth, primary)
+        # for y in range(depth):
+        #     primary = graphics.Color(255, 255, 255)
+        #     for x in range(length):
+        #         offscreen_canvas.SetPixel(index + x, y, primary.red, primary.green, primary.blue)
+        #     for x in range(falloff):
+        #         color_adjust_brightness(primary, multiplier, True)
+        #         offscreen_canvas.SetPixel(index - x, y, primary.red, primary.green, primary.blue)
         offscreen_canvas = matrix.SwapOnVSync(offscreen_canvas)
         index += 1
         yield
+
+
+LENGTH = 64 * 2
+WIDTH = 32 * 2
+
+def set_pixel_along_border(canvas, x, depth, color):
+    # Top section
+    if 0 < x < LENGTH:
+        for y in range(depth):
+            canvas.SetPixel(x, y, color.red, color.green, color.blue)
+    # Bottom section
+    elif LENGTH + WIDTH < x < LENGTH * 2 + WIDTH:
+        for y in range(depth):
+            canvas.SetPixel(LENGTH * 2 + WIDTH - x, WIDTH - y, color.red, color.green, color.blue)
+    # Right side
+    elif LENGTH < x < LENGTH + WIDTH:
+        for y in range(depth):
+            canvas.SetPixel(WIDTH - y, x - LENGTH, color.red, color.green, color.blue)
+    # Left side
+    else:
+        for y in range(depth):
+            canvas.SetPixel(WIDTH - y, LENGTH * 2 + WIDTH - x, color.red, color.green, color.blue)
 
 
 def color_adjust_brightness(color, alpha, to_int = False):
