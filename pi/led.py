@@ -46,6 +46,9 @@ def loading_generator(length=5, depth=4):
         primary = graphics.Color(255, 255, 255)
         for x in range(length):
             set_pixel_along_border(offscreen_canvas, index + x, depth, primary)
+        for x in range(falloff):
+            color_adjust_brightness(primary, multiplier, True)
+            set_pixel_along_border(offscreen_canvas, index - x, depth, primary)
         # for y in range(depth):
         #     primary = graphics.Color(255, 255, 255)
         #     for x in range(length):
