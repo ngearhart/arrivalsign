@@ -38,17 +38,25 @@ def loading_generator(length=5, depth=4):
     # font = graphics.Font()
     # font.LoadFont("7x14.bdf")  # line height is 10
     headerColor = graphics.Color(120, 120, 120)
-    index = 0
+    index = LENGTH / 2  # start in the middle
     falloff = 50
     multiplier = 0.9
     while True:
         offscreen_canvas.Clear()
         primary = graphics.Color(255, 255, 255)
+
         for x in range(length):
             set_pixel_along_border(offscreen_canvas, index + x, depth, primary)
+            set_pixel_along_border(offscreen_canvas, index + x + LENGTH, depth, primary)
+            set_pixel_along_border(offscreen_canvas, index + x + LENGTH * 2, depth, primary)
+            set_pixel_along_border(offscreen_canvas, index + x + LENGTH * 3, depth, primary)
         for x in range(falloff):
             color_adjust_brightness(primary, multiplier, True)
             set_pixel_along_border(offscreen_canvas, index - x, depth, primary)
+            set_pixel_along_border(offscreen_canvas, index - x + LENGTH, depth, primary)
+            set_pixel_along_border(offscreen_canvas, index - x + LENGTH * 2, depth, primary)
+            set_pixel_along_border(offscreen_canvas, index - x + LENGTH * 3, depth, primary)
+
         # for y in range(depth):
         #     primary = graphics.Color(255, 255, 255)
         #     for x in range(length):
