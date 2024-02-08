@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # Display a runtext with double-buffering.
 # from rgbmatrix import graphics
+from math import sqrt,cos,sin,radians
 
 import time
 from functools import cache
@@ -32,7 +33,7 @@ def get_frame_canvas():
     return get_matrix().CreateFrameCanvas()
 
 
-def loading_generator(length=5, depth=4):
+def loading_generator(length=5, depth=3):
     matrix = get_matrix()
     offscreen_canvas = get_frame_canvas()
     # font = graphics.Font()
@@ -41,21 +42,29 @@ def loading_generator(length=5, depth=4):
     index = LENGTH / 2  # start in the middle
     falloff = 50
     multiplier = 0.9
+    rotation = RGBRotate()
+    rotation.set_hue_rotation(5)
+    original = graphics.Color(0, 255, 0)
     while True:
         offscreen_canvas.Clear()
-        primary = graphics.Color(255, 255, 255)
-
+        new_r, new_g, new_b = rotation.apply(original.red, original.green, original.blue)
+        original = graphics.Color(new_r, new_g, new_b)
         for x in range(length):
-            set_pixel_along_border(offscreen_canvas, index + x, depth, primary)
-            set_pixel_along_border(offscreen_canvas, index + x + LENGTH, depth, primary)
-            set_pixel_along_border(offscreen_canvas, index + x + LENGTH * 2, depth, primary)
-            set_pixel_along_border(offscreen_canvas, index + x + LENGTH * 3, depth, primary)
+            set_pixel_along_border(offscreen_canvas, index + x, depth, original)
+            set_pixel_along_border(offscreen_canvas, index + x + LENGTH, depth, original)
+            set_pixel_along_border(offscreen_canvas, index + x + LENGTH * 2, depth, original)
+            set_pixel_along_border(offscreen_canvas, index + x + LENGTH * 3, depth, original)
+        
+        r, g, b = color_adjust_brightness(original, multiplier, True)
+        trail = graphics.Color(r, g, b)
         for x in range(falloff):
-            color_adjust_brightness(primary, multiplier, True)
-            set_pixel_along_border(offscreen_canvas, index - x, depth, primary)
-            set_pixel_along_border(offscreen_canvas, index - x + LENGTH, depth, primary)
-            set_pixel_along_border(offscreen_canvas, index - x + LENGTH * 2, depth, primary)
-            set_pixel_along_border(offscreen_canvas, index - x + LENGTH * 3, depth, primary)
+            r, g, b = color_adjust_brightness(trail, multiplier, True)
+            r, g, b = rotation.apply(r, g, b)
+            trail = graphics.Color(r, g, b)
+            set_pixel_along_border(offscreen_canvas, index - x, depth, trail)
+            set_pixel_along_border(offscreen_canvas, index - x + LENGTH, depth, trail)
+            set_pixel_along_border(offscreen_canvas, index - x + LENGTH * 2, depth, trail)
+            set_pixel_along_border(offscreen_canvas, index - x + LENGTH * 3, depth, trail)
 
         # for y in range(depth):
         #     primary = graphics.Color(255, 255, 255)
@@ -96,14 +105,45 @@ def set_pixel_along_border(canvas, x, depth, color):
 
 
 def color_adjust_brightness(color, alpha, to_int = False):
-    color.red   *= alpha
-    color.green *= alpha
-    color.blue  *= alpha
+    r = color.red   * alpha
+    g = color.green * alpha
+    b = color.blue  * alpha
 
     if to_int:
-        color.red   = int(color.red)
-        color.green = int(color.green)
-        color.blue  = int(color.blue)
+        r   = int(r)
+        g = int(g)
+        b  = int(b)
+    return r, g, b
+
+def clamp(v):
+    if v < 0:
+        return 0
+    if v > 255:
+        return 255
+    return int(v + 0.5)
+
+class RGBRotate(object):
+    def __init__(self):
+        self.matrix = [[1,0,0],[0,1,0],[0,0,1]]
+
+    def set_hue_rotation(self, degrees):
+        cosA = cos(radians(degrees))
+        sinA = sin(radians(degrees))
+        self.matrix[0][0] = cosA + (1.0 - cosA) / 3.0
+        self.matrix[0][1] = 1./3. * (1.0 - cosA) - sqrt(1./3.) * sinA
+        self.matrix[0][2] = 1./3. * (1.0 - cosA) + sqrt(1./3.) * sinA
+        self.matrix[1][0] = 1./3. * (1.0 - cosA) + sqrt(1./3.) * sinA
+        self.matrix[1][1] = cosA + 1./3.*(1.0 - cosA)
+        self.matrix[1][2] = 1./3. * (1.0 - cosA) - sqrt(1./3.) * sinA
+        self.matrix[2][0] = 1./3. * (1.0 - cosA) - sqrt(1./3.) * sinA
+        self.matrix[2][1] = 1./3. * (1.0 - cosA) + sqrt(1./3.) * sinA
+        self.matrix[2][2] = cosA + 1./3. * (1.0 - cosA)
+
+    def apply(self, r, g, b):
+        rx = r * self.matrix[0][0] + g * self.matrix[0][1] + b * self.matrix[0][2]
+        gx = r * self.matrix[1][0] + g * self.matrix[1][1] + b * self.matrix[1][2]
+        bx = r * self.matrix[2][0] + g * self.matrix[2][1] + b * self.matrix[2][2]
+        return clamp(rx), clamp(gx), clamp(bx)
 
 # offscreen_canvas = self.matrix.CreateFrameCanvas()
 # font = graphics.Font()
