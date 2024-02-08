@@ -5,7 +5,7 @@ import logging
 import argparse
 from widgets.arrival import ArrivalWidget
 import asyncio
-from led import loading_generator
+from led import loading_generator, LoadingData
 
 try:
     import rgbmatrix
@@ -27,8 +27,9 @@ async def try_connect():
 
 
 async def loading():
+    data = LoadingData(line1="Test!", line2="Test 2! Yipee", line3="doot")
     async def print_loading():
-        generator = loading_generator()
+        generator = loading_generator(data)
         while True:
             next(generator)
             await asyncio.sleep(0.02)

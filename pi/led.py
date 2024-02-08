@@ -3,6 +3,7 @@
 # from rgbmatrix import graphics
 from math import sqrt,cos,sin,radians
 
+from dataclasses import dataclass
 import time
 from functools import cache
 import sys
@@ -33,19 +34,27 @@ def get_frame_canvas():
     return get_matrix().CreateFrameCanvas()
 
 
-def loading_generator(length=5, depth=3):
+@dataclass
+class LoadingData:
+    # I know this could be an array - deal with it
+    line1: str = ''
+    line2: str = ''
+    line3: str = ''
+    should_exit: bool = False
+
+
+def loading_generator(data, length=5, depth=3):
     matrix = get_matrix()
     offscreen_canvas = get_frame_canvas()
-    # font = graphics.Font()
-    # font.LoadFont("7x14.bdf")  # line height is 10
-    headerColor = graphics.Color(120, 120, 120)
+    font = graphics.Font()
+    font.LoadFont("7x14.bdf")  # line height is 10
     index = LENGTH / 2  # start in the middle
     falloff = 50
     multiplier = 0.9
     rotation = RGBRotate()
     rotation.set_hue_rotation(5)
     original = graphics.Color(0, 255, 0)
-    while True:
+    while not data.should_exit:
         offscreen_canvas.Clear()
         new_r, new_g, new_b = rotation.apply(original.red, original.green, original.blue)
         original = graphics.Color(new_r, new_g, new_b)
@@ -66,6 +75,12 @@ def loading_generator(length=5, depth=3):
             set_pixel_along_border(offscreen_canvas, index - x + LENGTH * 2, depth, trail)
             set_pixel_along_border(offscreen_canvas, index - x + LENGTH * 3, depth, trail)
 
+        graphics.DrawText(offscreen_canvas, font, 10,
+                          20, graphics.Color(210, 210, 210), data.line1.center(15))
+        graphics.DrawText(offscreen_canvas, font, 10,
+                          35, graphics.Color(210, 210, 210), data.line2.center(15))
+        graphics.DrawText(offscreen_canvas, font, 10,
+                          50, graphics.Color(210, 210, 210), data.line3.center(15))
         # for y in range(depth):
         #     primary = graphics.Color(255, 255, 255)
         #     for x in range(length):
