@@ -5,7 +5,7 @@ import logging
 import argparse
 from widgets.arrival import ArrivalWidget
 import asyncio
-from led import loading_generator, LoadingData
+from led import loading_generator, LoadingData, plain_text
 from network import try_connect
 
 try:
@@ -48,6 +48,8 @@ async def startup():
     await asyncio.gather(print_loading(data), wait_for_network(data))
     data.should_exit = False
     await asyncio.gather(print_loading(data), sleep_then_terminate(data, 5))
+    plain_text("", "Starting", "", 100, 100, 100)
+    await asyncio.sleep(1)
 
 
 async def main():

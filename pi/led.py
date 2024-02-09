@@ -51,7 +51,7 @@ def loading_generator(data: LoadingData, length=5, depth=3):
     matrix = get_matrix()
     offscreen_canvas = get_frame_canvas()
     font = graphics.Font()
-    font.LoadFont("7x14.bdf")  # line height is 10
+    font.LoadFont("6x10.bdf")
     falloff = 50
     multiplier = 0.9
     rotation = RGBRotate()
@@ -78,12 +78,12 @@ def loading_generator(data: LoadingData, length=5, depth=3):
             set_pixel_along_border(offscreen_canvas, data.loading_index - x + LENGTH * 2, depth, trail)
             set_pixel_along_border(offscreen_canvas, data.loading_index - x + LENGTH * 3, depth, trail)
 
-        graphics.DrawText(offscreen_canvas, font, 10,
-                          20, graphics.Color(210, 210, 210), data.line1.center(15))
-        graphics.DrawText(offscreen_canvas, font, 10,
-                          35, graphics.Color(210, 210, 210), data.line2.center(15))
-        graphics.DrawText(offscreen_canvas, font, 10,
-                          50, graphics.Color(210, 210, 210), data.line3.center(15))
+        graphics.DrawText(offscreen_canvas, font, 7,
+                          20, graphics.Color(210, 210, 210), data.line1.center(20))
+        graphics.DrawText(offscreen_canvas, font, 7,
+                          35, graphics.Color(210, 210, 210), data.line2.center(20))
+        graphics.DrawText(offscreen_canvas, font, 7,
+                          50, graphics.Color(210, 210, 210), data.line3.center(20))
         # for y in range(depth):
         #     primary = graphics.Color(255, 255, 255)
         #     for x in range(length):
@@ -159,6 +159,23 @@ class RGBRotate(object):
         gx = r * self.matrix[1][0] + g * self.matrix[1][1] + b * self.matrix[1][2]
         bx = r * self.matrix[2][0] + g * self.matrix[2][1] + b * self.matrix[2][2]
         return clamp(rx), clamp(gx), clamp(bx)
+
+
+def plain_text(line1: str, line2: str, line3: str, r, g, b):
+    matrix = get_matrix()
+    offscreen_canvas = get_frame_canvas()
+    font = graphics.Font()
+    font.LoadFont("7x14.bdf")  # line height is 10
+    rotation = RGBRotate()
+    rotation.set_hue_rotation(5)
+    offscreen_canvas.Clear()
+    graphics.DrawText(offscreen_canvas, font, 10,
+                        20, graphics.Color(r, g, b), line1.center(15))
+    graphics.DrawText(offscreen_canvas, font, 10,
+                        35, graphics.Color(r, g, b), line2.center(15))
+    graphics.DrawText(offscreen_canvas, font, 10,
+                        50, graphics.Color(r, g, b), line3.center(15))
+    matrix.SwapOnVSync(offscreen_canvas)
 
 # offscreen_canvas = self.matrix.CreateFrameCanvas()
 # font = graphics.Font()
