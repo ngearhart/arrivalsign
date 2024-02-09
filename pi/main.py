@@ -1,5 +1,3 @@
-#!/usr/bin/python3
-
 import dotenv
 dotenv.load_dotenv()
 
