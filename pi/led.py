@@ -79,11 +79,11 @@ def loading_generator(data: LoadingData, length=5, depth=3):
             set_pixel_along_border(offscreen_canvas, data.loading_index - x + LENGTH * 3, depth, trail)
 
         graphics.DrawText(offscreen_canvas, font, 7,
-                          20, graphics.Color(210, 210, 210), data.line1.center(20))
+                          24, graphics.Color(210, 210, 210), data.line1.center(20))
         graphics.DrawText(offscreen_canvas, font, 7,
                           35, graphics.Color(210, 210, 210), data.line2.center(20))
         graphics.DrawText(offscreen_canvas, font, 7,
-                          50, graphics.Color(210, 210, 210), data.line3.center(20))
+                          46, graphics.Color(210, 210, 210), data.line3.center(20))
         # for y in range(depth):
         #     primary = graphics.Color(255, 255, 255)
         #     for x in range(length):
