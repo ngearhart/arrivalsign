@@ -34,6 +34,9 @@ def get_frame_canvas():
     return get_matrix().CreateFrameCanvas()
 
 
+LENGTH = 64 * 2
+WIDTH = 32 * 2
+
 @dataclass
 class LoadingData:
     # I know this could be an array - deal with it
@@ -41,14 +44,14 @@ class LoadingData:
     line2: str = ''
     line3: str = ''
     should_exit: bool = False
+    loading_index: int = LENGTH / 2  # start in the middle
 
 
-def loading_generator(data, length=5, depth=3):
+def loading_generator(data: LoadingData, length=5, depth=3):
     matrix = get_matrix()
     offscreen_canvas = get_frame_canvas()
     font = graphics.Font()
     font.LoadFont("7x14.bdf")  # line height is 10
-    index = LENGTH / 2  # start in the middle
     falloff = 50
     multiplier = 0.9
     rotation = RGBRotate()
@@ -59,10 +62,10 @@ def loading_generator(data, length=5, depth=3):
         new_r, new_g, new_b = rotation.apply(original.red, original.green, original.blue)
         original = graphics.Color(new_r, new_g, new_b)
         for x in range(length):
-            set_pixel_along_border(offscreen_canvas, index + x, depth, original)
-            set_pixel_along_border(offscreen_canvas, index + x + LENGTH, depth, original)
-            set_pixel_along_border(offscreen_canvas, index + x + LENGTH * 2, depth, original)
-            set_pixel_along_border(offscreen_canvas, index + x + LENGTH * 3, depth, original)
+            set_pixel_along_border(offscreen_canvas, data.loading_index + x, depth, original)
+            set_pixel_along_border(offscreen_canvas, data.loading_index + x + LENGTH, depth, original)
+            set_pixel_along_border(offscreen_canvas, data.loading_index + x + LENGTH * 2, depth, original)
+            set_pixel_along_border(offscreen_canvas, data.loading_index + x + LENGTH * 3, depth, original)
         
         r, g, b = color_adjust_brightness(original, multiplier, True)
         trail = graphics.Color(r, g, b)
@@ -70,10 +73,10 @@ def loading_generator(data, length=5, depth=3):
             r, g, b = color_adjust_brightness(trail, multiplier, True)
             r, g, b = rotation.apply(r, g, b)
             trail = graphics.Color(r, g, b)
-            set_pixel_along_border(offscreen_canvas, index - x, depth, trail)
-            set_pixel_along_border(offscreen_canvas, index - x + LENGTH, depth, trail)
-            set_pixel_along_border(offscreen_canvas, index - x + LENGTH * 2, depth, trail)
-            set_pixel_along_border(offscreen_canvas, index - x + LENGTH * 3, depth, trail)
+            set_pixel_along_border(offscreen_canvas, data.loading_index - x, depth, trail)
+            set_pixel_along_border(offscreen_canvas, data.loading_index - x + LENGTH, depth, trail)
+            set_pixel_along_border(offscreen_canvas, data.loading_index - x + LENGTH * 2, depth, trail)
+            set_pixel_along_border(offscreen_canvas, data.loading_index - x + LENGTH * 3, depth, trail)
 
         graphics.DrawText(offscreen_canvas, font, 10,
                           20, graphics.Color(210, 210, 210), data.line1.center(15))
@@ -89,12 +92,9 @@ def loading_generator(data, length=5, depth=3):
         #         color_adjust_brightness(primary, multiplier, True)
         #         offscreen_canvas.SetPixel(index - x, y, primary.red, primary.green, primary.blue)
         offscreen_canvas = matrix.SwapOnVSync(offscreen_canvas)
-        index += 1
+        data.loading_index += 1
         yield
 
-
-LENGTH = 64 * 2
-WIDTH = 32 * 2
 
 def set_pixel_along_border(canvas, x, depth, color):
     x = x % (LENGTH * 2 + WIDTH * 2)

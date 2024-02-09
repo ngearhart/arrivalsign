@@ -6,6 +6,7 @@ import argparse
 from widgets.arrival import ArrivalWidget
 import asyncio
 from led import loading_generator, LoadingData
+from network import try_connect
 
 try:
     import rgbmatrix
@@ -20,24 +21,37 @@ def parse_args():
     return parser.parse_args()
 
 
-async def try_connect():
+async def wait_for_network(data):
     while True:
-        print("hi")
-        await asyncio.sleep(5)
+        ssid = await try_connect(data)
+        if ssid is not None:
+            data.should_exit = True
+            return
+        await asyncio.sleep(1)
+
+async def print_loading(data):
+    generator = loading_generator(data)
+    while not data.should_exit:
+        next(generator)
+        await asyncio.sleep(0.02)
 
 
-async def loading():
-    data = LoadingData(line1="Test!", line2="Test 2! Yipee", line3="doot")
-    async def print_loading():
-        generator = loading_generator(data)
-        while True:
-            next(generator)
-            await asyncio.sleep(0.02)
-    await asyncio.gather(print_loading(), try_connect())
+async def sleep_then_terminate(data, time):
+    await asyncio.sleep(time)
+    data.should_exit = True
+
+async def startup():
+    data = LoadingData(line1="WMATA Metro Tracker", line2="by Noah Gearhart", line3="for Dark Wolf")
+
+    await asyncio.gather(print_loading(data), sleep_then_terminate(data, 5))
+    data.should_exit = False
+    await asyncio.gather(print_loading(data), wait_for_network(data))
+    data.should_exit = False
+    await asyncio.gather(print_loading(data), sleep_then_terminate(data, 5))
 
 
 async def main():
-    await loading()
+    await startup()
 
     widgets = [
         ArrivalWidget()
