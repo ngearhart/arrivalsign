@@ -47,8 +47,8 @@ def get_connected_network_interface():
 
 @async_wrap
 def try_connect(loading_data: LoadingData):
-    loading_data.line1 = 'Connecting to network'
-    loading_data.line2 = ''
+    loading_data.line1 = 'Connecting'
+    loading_data.line2 = 'to network'
     loading_data.line3 = ''
     connected_network_interface = get_connected_network_interface()
     if connected_network_interface is None:
