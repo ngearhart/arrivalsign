@@ -60,7 +60,7 @@ def try_connect(loading_data: LoadingData):
         login_to_captive_portal()
     if not is_internet_connected():
         return None
-    logging.debug(f"Found internet at SSID {(ssid[:10] + '...') if len(ssid) > 10 else ssid}")
-    loading_data.line3 = f'SSID: {ssid}'
+    logging.debug(f"Found internet at SSID {ssid}")
+    loading_data.line3 = f"SSID: {(ssid[:10] + '...') if len(ssid) > 13 else ssid}"
     return ssid
 
