@@ -12,7 +12,7 @@ class AlertsWidget(Widget):
 
     # seconds_per_line = 4
     show_seconds = 10
-    sleep_seconds = 20
+    sleep_seconds = 600 # 10 minutes
     WIDGET_NAME = 'DCMetroAlertsWidget'
 
     async def get_custom_messages(self):

@@ -54,7 +54,7 @@ async def startup():
 
 
 async def main():
-    # await startup()
+    await startup()
 
     out_list = []
 
