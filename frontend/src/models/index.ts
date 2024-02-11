@@ -17,8 +17,8 @@ interface DCMetroTrainArrivalWidget extends GenericWidget {
     custom_trains: CustomTrain[]
 }
 
-interface AlertMessage extends GenericWidget {
-    text: string
+interface AlertMessage {
+    message: string
 }
 
 interface MessageItem {

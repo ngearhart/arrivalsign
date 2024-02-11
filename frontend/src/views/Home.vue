@@ -15,6 +15,7 @@
       </template>
     </v-card>
     <train-arrival-editor v-model="currentStation" :initialMessageList="currentMessageList" :open="showArrivalWidget" @close="closeTrainArrival(false, null)" @save="(val: MessageItem[]) => closeTrainArrival(true, val)" />
+    <alert-editor v-model="currentAlertList" :open="showAlertWidget" @close="closeAlerts(false)" @update:modelValue="closeAlerts(true)" />
   </base-layout>
 </template>
 
@@ -24,6 +25,7 @@ import { onMounted, ref, reactive } from 'vue'
 import { useDatabaseList  } from 'vuefire'
 import { ref as dbRef, getDatabase, push, set } from 'firebase/database'
 import TrainArrivalEditor from '@/components/TrainArrivalEditor.vue'
+import AlertEditor from '@/components/AlertEditor.vue'
 import { GenericWidget, MessageItem } from '@/models'
 
 const widgetDb = dbRef(getDatabase(), 'widgets')
@@ -41,8 +43,10 @@ const headers = reactive([
 ])
 
 const showArrivalWidget = ref(false);
+const showAlertWidget = ref(false);
 const currentStation = ref(0);
 const currentMessageList = ref([]);
+const currentAlertList = ref([]);
 
 const showDialog = (item: any) => {
   if (item.value === 'DCMetroTrainArrivalWidget') {
@@ -51,6 +55,12 @@ const showDialog = (item: any) => {
     currentStation.value = item.raw.station_id;
     currentMessageList.value = item.raw.messages || [];
     showArrivalWidget.value = true;
+  }
+  else if (item.value === 'DCMetroAlertsWidget') {
+    // console.log(item.raw)
+    currentItemId = item.raw.id;
+    currentAlertList.value = item.raw.alerts || [];
+    showAlertWidget.value = true;
   }
 }
 
@@ -68,6 +78,17 @@ const closeTrainArrival = (save: boolean, messages: MessageItem[] | null) => {
     set(dbRef(getDatabase(), 'widgets/' + currentItemId), newObj);
   }
   showArrivalWidget.value = false;
+}
+
+const closeAlerts = (save: boolean) => {
+  if (save) {
+    const newObj: any = {
+      "name": "DCMetroAlertsWidget",
+      "alerts": currentAlertList.value
+    }
+    set(dbRef(getDatabase(), 'widgets/' + currentItemId), newObj);
+  }
+  showAlertWidget.value = false;
 }
 
 // onMounted(() => {
