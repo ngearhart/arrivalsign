@@ -1,2 +1,3 @@
 firebase
 python-dotenv
+ifcfg==0.24
