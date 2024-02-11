@@ -4,8 +4,9 @@ dotenv.load_dotenv()
 import logging
 import argparse
 from widgets.arrival import ArrivalWidget
+from widgets.alerts import AlertsWidget
 import asyncio
-from led import loading_generator, LoadingData, plain_text
+from led import loading_generator, LoadingData, plain_text, AlertData, alert_generator
 from network import try_connect
 
 try:
@@ -53,10 +54,13 @@ async def startup():
 
 
 async def main():
-    await startup()
+    # await startup()
+
+    out_list = []
 
     widgets = [
-        ArrivalWidget()
+        ArrivalWidget(out_list),
+        AlertsWidget(out_list)
     ]
 
     tasks = [widget.loop() for widget in widgets]
