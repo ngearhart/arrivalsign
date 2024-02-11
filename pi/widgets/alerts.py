@@ -45,11 +45,13 @@ class AlertsWidget(Widget):
         # Pick a random alert
         alert = choice(alerts)["message"]
         logging.debug(f"Showing alert {alert}")
-        chunks, chunk_size = len(alert), 15
+        chunks, chunk_size = len(alert), 22
         lines = [ alert[i:i+chunk_size] for i in range(0, chunks, chunk_size) ]
 
+        data = AlertData(line2='Metro Alert')
+        await gather(self.print_loading(data), self.sleep_then_terminate(data, 3))
+
         data = AlertData(line1=lines[0], line2=lines[1] if len(lines) > 1 else '', line3=lines[2] if len(lines) > 2 else '')
-        
         await gather(self.print_loading(data), self.sleep_then_terminate(data, self.show_seconds))
 
         # TODO: Scroll through lines

@@ -188,7 +188,7 @@ def alert_generator(data: AlertData, box_size: int=8):
     matrix = get_matrix()
     offscreen_canvas = get_frame_canvas()
     font = graphics.Font()
-    font.LoadFont("6x10.bdf")
+    font.LoadFont("5x7.bdf")
     color = graphics.Color(255, 255, 0)
 
     flip = False
@@ -200,12 +200,12 @@ def alert_generator(data: AlertData, box_size: int=8):
             for x in range(box_size):
                 set_pixel_along_border(offscreen_canvas, (((i * 2) + offset) * box_size) + x, box_size, color)
 
-        graphics.DrawText(offscreen_canvas, font, 7,
-                          24, graphics.Color(210, 210, 210), data.line1.center(20))
-        graphics.DrawText(offscreen_canvas, font, 7,
-                          35, graphics.Color(210, 210, 210), data.line2.center(20))
-        graphics.DrawText(offscreen_canvas, font, 7,
-                          46, graphics.Color(210, 210, 210), data.line3.center(20))
+        graphics.DrawText(offscreen_canvas, font, box_size + 1,
+                          24, graphics.Color(210, 210, 210), data.line1.center(22))
+        graphics.DrawText(offscreen_canvas, font, box_size + 1,
+                          35, graphics.Color(210, 210, 210), data.line2.center(22))
+        graphics.DrawText(offscreen_canvas, font, box_size + 1,
+                          46, graphics.Color(210, 210, 210), data.line3.center(22))
         offscreen_canvas = matrix.SwapOnVSync(offscreen_canvas)
         flip = not flip
         yield
