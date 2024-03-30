@@ -177,6 +177,40 @@ def plain_text(line1: str, line2: str, line3: str, r, g, b):
                         50, graphics.Color(r, g, b), line3.center(15))
     matrix.SwapOnVSync(offscreen_canvas)
 
+@dataclass
+class AlertData:
+    line1: str = ''
+    line2: str = ''
+    line3: str = ''
+    should_exit: bool = False
+
+def alert_generator(data: AlertData, box_size: int=8):
+    matrix = get_matrix()
+    offscreen_canvas = get_frame_canvas()
+    font = graphics.Font()
+    font.LoadFont("5x7.bdf")
+    color = graphics.Color(255, 255, 0)
+
+    flip = False
+
+    while True:
+        offscreen_canvas.Clear()
+        offset = 0 if flip else 1
+        for i in range((LENGTH * 2 + WIDTH * 2) // (box_size * 2)):
+            for x in range(box_size):
+                set_pixel_along_border(offscreen_canvas, (((i * 2) + offset) * box_size) + x, box_size, color)
+
+        graphics.DrawText(offscreen_canvas, font, box_size + 1,
+                          24, graphics.Color(210, 210, 210), data.line1.center(22))
+        graphics.DrawText(offscreen_canvas, font, box_size + 1,
+                          35, graphics.Color(210, 210, 210), data.line2.center(22))
+        graphics.DrawText(offscreen_canvas, font, box_size + 1,
+                          46, graphics.Color(210, 210, 210), data.line3.center(22))
+        offscreen_canvas = matrix.SwapOnVSync(offscreen_canvas)
+        flip = not flip
+        yield
+
+
 # offscreen_canvas = self.matrix.CreateFrameCanvas()
 # font = graphics.Font()
 # font.LoadFont("../../../fonts/7x13.bdf")

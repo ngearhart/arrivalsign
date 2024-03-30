@@ -1,12 +1,9 @@
 
 ## From https://github.com/metro-sign/dc-metro/blob/main/src/metro_api.py
-from led import get_matrix, get_frame_canvas
 from widgets import Widget
 import logging
-from db import get_firebase
 from utils import MetroApi
-from datetime import datetime
-from requests import exceptions
+from datetime import datetime, timedelta
 from asyncio import sleep
 
 try:
@@ -16,42 +13,16 @@ except ImportError:
 
 class ArrivalWidget(Widget):
 
-    sleep_seconds = 10
+    sleep_seconds = 1
+    update_seconds = 10
     LINE_HEIGHT = 10
     LINE_HEIGHT_WITH_PADDING = 12
     WIDGET_NAME = 'DCMetroTrainArrivalWidget'
     DEFAULT_STATION = 'D02'
     MAX_DISPLAY = 4
 
-    def __init__(self):
-        self.matrix = get_matrix()
-        self.offscreen_canvas = get_frame_canvas()
-        self.font = graphics.Font()
-        self.font.LoadFont("7x14.bdf")  # line height is 10
-        self.headerColor = graphics.Color(120, 120, 120)
-        self.white = graphics.Color(255, 255, 255)
-        self.firebase = get_firebase()
-        
-
-    async def _firebase_get_with_retries(self, url, name):
-        RETRIES = 5
-        SLEEP_SECONDS = 5
-        for _ in range(RETRIES):
-            try:
-                return self.firebase.get(url, name)
-            except exceptions.ConnectionError:
-                logging.warn("Firebase connection error, retrying...")
-                await sleep(SLEEP_SECONDS)
-        return None
-
-    async def get_fb_config(self):
-        # The following is fraught for error
-        widgets = await self._firebase_get_with_retries("/widgets", None)
-        for widgetId in widgets:
-            if widgets[widgetId]['name'] == self.WIDGET_NAME:
-                logging.debug(widgets[widgetId])
-                return widgets[widgetId]
-        return None
+    previous_result = []
+    previous_result_timestamp = datetime(2000, 1, 1)
 
     async def get_station(self):
         fb_obj = await self.get_fb_config()
@@ -67,6 +38,10 @@ class ArrivalWidget(Widget):
         return []
 
     async def get_lines_to_display(self):
+        if self.previous_result_timestamp + timedelta(seconds=self.update_seconds) > datetime.now():
+            logging.debug("Using cached results for arrival update")
+            return self.previous_result
+
         station = await self.get_station()
         train_data_1 = MetroApi.fetch_train_predictions(station, '1')
         train_data_2 = MetroApi.fetch_train_predictions(station, '2')
@@ -107,6 +82,8 @@ class ArrivalWidget(Widget):
                     train_data.pop(i)
                     break
 
+        self.previous_result = train_data
+        self.previous_result_timestamp = datetime.now()
         return train_data
 
     async def update(self):

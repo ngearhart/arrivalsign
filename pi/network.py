@@ -22,7 +22,8 @@ def login_to_captive_portal():
     logging.debug("Hitting captive portal")
     response = post(
         url=f"https://inform.infra.darkwolf.io:8443/guest/s/default/login?t={int(time.time() * 1000)}",
-        data=payload
+        data=payload,
+        verify=False
     )
     logging.debug(f"Captive portal response: {response.status_code} {response.content}")
 
