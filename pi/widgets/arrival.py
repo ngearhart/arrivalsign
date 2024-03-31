@@ -14,7 +14,7 @@ except ImportError:
 class ArrivalWidget(Widget):
 
     sleep_seconds = 1
-    update_seconds = 30
+    update_seconds = 20
     LINE_HEIGHT = 10
     LINE_HEIGHT_WITH_PADDING = 12
     WIDGET_NAME = 'DCMetroTrainArrivalWidget'
@@ -65,7 +65,7 @@ class ArrivalWidget(Widget):
                     'destination': message['message'],
                     'arrival': arrival_msg,
                     'arrival_timestamp': arrival_time,
-                    'sticky': message['sticky'] == 'true'
+                    'sticky': bool(message['sticky'])
                 })
         train_data.sort(key=MetroApi._sort)
 
@@ -78,8 +78,8 @@ class ArrivalWidget(Widget):
             # Otherwise we have real trains / non sticky messages. Remove them!
             # Find the first non-sticky at the end of the list
             for i in range(len(train_data)):
-                if not train_data[i].get('sticky', False):
-                    train_data.pop(i)
+                if not train_data[len(train_data) - i - 1].get('sticky', False):
+                    train_data.pop(len(train_data) - i - 1)
                     break
 
         self.previous_result = train_data
