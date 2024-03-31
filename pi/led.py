@@ -25,6 +25,7 @@ def get_matrix() -> RGBMatrix:
     options.chain_length = 4
     options.pixel_mapper_config = 'U-mapper'
     options.drop_privileges = True
+    options.show_refresh_rate = True
     options.limit_refresh_rate_hz = 120
 
     return RGBMatrix(options = options)
@@ -196,9 +197,10 @@ def alert_generator(data: AlertData, box_size: int=8):
     while True:
         offscreen_canvas.Clear()
         offset = 0 if flip else 1
-        for i in range((LENGTH * 2 + WIDTH * 2) // (box_size * 2)):
+        for i in range(LENGTH // (box_size * 2)):
             for x in range(box_size):
                 set_pixel_along_border(offscreen_canvas, (((i * 2) + offset) * box_size) + x, box_size, color)
+                set_pixel_along_border(offscreen_canvas, (((i * 2) + offset) * box_size) + x + (LENGTH + WIDTH), box_size, color)
 
         graphics.DrawText(offscreen_canvas, font, box_size + 1,
                           24, graphics.Color(210, 210, 210), data.line1.center(22))

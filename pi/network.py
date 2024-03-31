@@ -30,7 +30,7 @@ def login_to_captive_portal():
 
 def is_internet_connected():
     try:
-        response = get("https://pypi.org", timeout=5)
+        response = get("https://pypi.org", timeout=30)
         return response.status_code == 200
     except Exception:
         return False
