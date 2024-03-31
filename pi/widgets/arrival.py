@@ -14,7 +14,7 @@ except ImportError:
 class ArrivalWidget(Widget):
 
     sleep_seconds = 1
-    update_seconds = 10
+    update_seconds = 30
     LINE_HEIGHT = 10
     LINE_HEIGHT_WITH_PADDING = 12
     WIDGET_NAME = 'DCMetroTrainArrivalWidget'

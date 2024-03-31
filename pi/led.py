@@ -20,13 +20,17 @@ except ImportError:
 def get_matrix() -> RGBMatrix:
     options = RGBMatrixOptions()
 
+    options.hardware_mapping = 'adafruit-hat-pwm'
     options.rows = 32
     options.cols = 64
     options.chain_length = 4
     options.pixel_mapper_config = 'U-mapper'
     options.drop_privileges = True
-    options.show_refresh_rate = True
-    options.limit_refresh_rate_hz = 120
+    # options.show_refresh_rate = True
+    options.limit_refresh_rate_hz = 60
+    options.pwm_dither_bits = 1
+    options.pwm_lsb_nanoseconds = 50
+    options.pwm_bits = 7
 
     return RGBMatrix(options = options)
 
@@ -202,12 +206,14 @@ def alert_generator(data: AlertData, box_size: int=8):
                 set_pixel_along_border(offscreen_canvas, (((i * 2) + offset) * box_size) + x, box_size, color)
                 set_pixel_along_border(offscreen_canvas, (((i * 2) + offset) * box_size) + x + (LENGTH + WIDTH), box_size, color)
 
-        graphics.DrawText(offscreen_canvas, font, box_size + 1,
-                          24, graphics.Color(210, 210, 210), data.line1.center(22))
-        graphics.DrawText(offscreen_canvas, font, box_size + 1,
-                          35, graphics.Color(210, 210, 210), data.line2.center(22))
-        graphics.DrawText(offscreen_canvas, font, box_size + 1,
-                          46, graphics.Color(210, 210, 210), data.line3.center(22))
+        # Max width 25 characters with this font.
+        # Short by like 3 pixels to be 26.
+        graphics.DrawText(offscreen_canvas, font, 2,
+                          24, graphics.Color(210, 210, 210), data.line1.center(25))
+        graphics.DrawText(offscreen_canvas, font, 2,
+                          35, graphics.Color(210, 210, 210), data.line2.center(25))
+        graphics.DrawText(offscreen_canvas, font, 2,
+                          46, graphics.Color(210, 210, 210), data.line3.center(25))
         offscreen_canvas = matrix.SwapOnVSync(offscreen_canvas)
         flip = not flip
         yield

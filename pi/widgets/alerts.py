@@ -44,11 +44,14 @@ class AlertsWidget(Widget):
                 widget.should_display = False
 
         # Pick a random alert
-        alert = "this is a really1234 long message! Hope it gets broken correctly" #choice(alerts)["message"]
+        alert = choice(alerts)["message"]
         logging.debug(f"Showing alert {alert}")
 
-        max_text_row_size = 22
+        max_text_row_size = 25
         lines = wrap(alert, width=max_text_row_size)
+
+        if len(lines) == 1:
+            lines.insert('', 0)
 
         data = AlertData(line2='Metro Alert')
         await gather(self.print_loading(data), self.sleep_then_terminate(data, 3))
