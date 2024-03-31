@@ -51,7 +51,7 @@ class AlertsWidget(Widget):
         lines = wrap(alert, width=max_text_row_size)
 
         if len(lines) == 1:
-            lines.insert('', 0)
+            lines.insert(0, '')
 
         data = AlertData(line2='Metro Alert')
         await gather(self.print_loading(data), self.sleep_then_terminate(data, 3))
