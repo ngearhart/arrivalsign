@@ -76,7 +76,7 @@ class MetroApi:
         return {
             'line': line,
             'line_color': MetroApi._get_line_color(line),
-            'destination': destination,
+            'destination': destination[:8],  # only 8 characters can fit on my display
             'arrival': arrival,
             'arrival_timestamp': datetime.now() + timedelta(minutes=0 if arrival_is_now else int(arrival))
         }

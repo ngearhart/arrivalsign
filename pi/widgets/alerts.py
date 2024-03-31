@@ -7,6 +7,7 @@ from datetime import datetime
 from asyncio import sleep, gather
 from random import choice
 from led import alert_generator, AlertData
+from textwrap import wrap
 
 class AlertsWidget(Widget):
 
@@ -45,8 +46,12 @@ class AlertsWidget(Widget):
         # Pick a random alert
         alert = choice(alerts)["message"]
         logging.debug(f"Showing alert {alert}")
-        chunks, chunk_size = len(alert), 22
-        lines = [ alert[i:i+chunk_size] for i in range(0, chunks, chunk_size) ]
+
+        max_text_row_size = 25
+        lines = wrap(alert, width=max_text_row_size)
+
+        if len(lines) == 1:
+            lines.insert(0, '')
 
         data = AlertData(line2='Metro Alert')
         await gather(self.print_loading(data), self.sleep_then_terminate(data, 3))
