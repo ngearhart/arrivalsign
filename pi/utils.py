@@ -34,12 +34,12 @@ class MetroApi:
 
     def _sort(data):
         if data['arrival'].isnumeric():
-            return (int(data['arrival']), data['destination'])
+            return data['arrival_timestamp']
         if data['arrival'] == 'ARR':
-            return (-1, data['destination'])
+            return datetime.now() - timedelta(seconds=60)
         if data['arrival'] == 'BRD':
-            return (-2, data['destination'])
-        return (-1000, 'Z')
+            return datetime.now() - timedelta(seconds=120)
+        return datetime.now() + timedelta(days=1)
 
     def _fetch_train_predictions(station_code: str, group: str, retry_attempt: int) -> list[dict]:
         try:
@@ -98,6 +98,8 @@ class MetroApi:
         elif line == 'BL':
             return graphics.Color(0, 0, 255)
             # return 0x0000FF
+        elif line == 'TS':
+            return graphics.Color(0, 51, 160)
         else:
             return graphics.Color(170, 170, 170)
             # return 0xAAAAAA
