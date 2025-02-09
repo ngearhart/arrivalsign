@@ -1,5 +1,5 @@
 use core::num;
-use std::{cmp::Ordering, collections::HashMap, env, error::Error, fmt::Debug};
+use std::{cmp::Ordering, collections::HashMap, env, error::Error, fmt::Debug, ops::Deref};
 
 use chrono::{DateTime, TimeDelta, Utc};
 use embedded_graphics::pixelcolor::Rgb888;
@@ -46,11 +46,8 @@ pub struct TrainDisplayEntry {
     arrival_timestamp: DateTime<Utc> 
 }
 
-trait TimestampCompare {
-    fn get_comparison_timestamp(&self) -> DateTime<Utc>;
-}
-
 pub trait ArrivalDisplayable {
+    fn get_comparison_timestamp(&self) -> DateTime<Utc>;
     fn get_message(&self) -> String;
     fn get_line(&self) -> Line;
     fn get_line_color(&self) -> Rgb888;
@@ -73,8 +70,21 @@ impl ArrivalDisplayable for TrainDisplayEntry {
     fn pretty_print(&self) -> String {
         format!("{} {} {}", get_line_string(self.line), self.destination, self.arrival)
     }
+    
+    fn get_comparison_timestamp(&self) -> DateTime<Utc> {
+        match self.arrival.parse::<i64>() {
+            Ok(_) => self.arrival_timestamp,  // Use the arrival timestamp by default
+            Err(_) => {
+                if self.arrival == "ARR" {
+                    return Utc::now() - TimeDelta::seconds(60); // If ARR, sort as if it arrived 1 minute ago
+                } else if self.arrival == "BRD" {
+                    return Utc::now() - TimeDelta::seconds(120); // If BRD, sort as if it arrived 2 minutes ago
+                }
+                return Utc::now() + TimeDelta::days(1);  // If something else, put it far below
+            }
+        }
+    }
 }
-
 
 impl ArrivalDisplayable for ArrivalMessage {
     fn get_message(&self) -> String {
@@ -92,25 +102,8 @@ impl ArrivalDisplayable for ArrivalMessage {
     fn pretty_print(&self) -> String {
         format!("{} {} {}", get_line_string(self.get_line()), self.message, Utc::now() - self.get_comparison_timestamp())
     }
-}
 
-impl TimestampCompare for TrainDisplayEntry {
-    fn get_comparison_timestamp(&self) -> DateTime<Utc> {
-        match self.arrival.parse::<i64>() {
-            Ok(_) => self.arrival_timestamp,  // Use the arrival timestamp by default
-            Err(_) => {
-                if self.arrival == "ARR" {
-                    return Utc::now() - TimeDelta::seconds(60); // If ARR, sort as if it arrived 1 minute ago
-                } else if self.arrival == "BRD" {
-                    return Utc::now() - TimeDelta::seconds(120); // If BRD, sort as if it arrived 2 minutes ago
-                }
-                return Utc::now() + TimeDelta::days(1);  // If something else, put it far below
-            }
-        }
-    }
-}
-
-impl TimestampCompare for ArrivalMessage {
+    
     fn get_comparison_timestamp(&self) -> DateTime<Utc> {
         match self.sticky {
             true => DateTime::from_timestamp(0, 0).unwrap(),  // Put sticky messages on top
@@ -138,6 +131,46 @@ impl PartialEq for TrainDisplayEntry {
 }
 
 impl Eq for TrainDisplayEntry {}
+
+impl Ord for ArrivalMessage {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.get_comparison_timestamp().cmp(&other.get_comparison_timestamp())
+    }
+}
+
+impl PartialOrd for ArrivalMessage {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.get_comparison_timestamp().cmp(&other.get_comparison_timestamp()))
+    }
+}
+
+impl PartialEq for ArrivalMessage {
+    fn eq(&self, other: &Self) -> bool {
+        self.get_comparison_timestamp() == other.get_comparison_timestamp()
+    }
+}
+
+impl Eq for ArrivalMessage {}
+
+impl Ord for Box<dyn ArrivalDisplayable> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.get_comparison_timestamp().cmp(&other.get_comparison_timestamp())
+    }
+}
+
+impl PartialOrd for Box<dyn ArrivalDisplayable> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.get_comparison_timestamp().cmp(&other.get_comparison_timestamp()))
+    }
+}
+
+impl PartialEq for Box<dyn ArrivalDisplayable> {
+    fn eq(&self, other: &Self) -> bool {
+        self.get_comparison_timestamp() == other.get_comparison_timestamp()
+    }
+}
+
+impl Eq for Box<dyn ArrivalDisplayable> {}
 
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
@@ -201,17 +234,26 @@ pub async fn get_latest_state(arrival_state: ArrivalWidget) -> Result<Vec<Box<dy
 }
 
 fn convert_api_return_to_display(response: PredictionApiReturn, extra_messages: Option<Vec<ArrivalMessage>>) -> Vec<Box<dyn ArrivalDisplayable>> {
-    response.trains.iter().map(|train| {
-        let arrival_as_number=  train.min.parse::<i64>();
+    let extra_msg: Vec<Box<dyn ArrivalDisplayable>> = extra_messages.unwrap_or(Vec::new())
+        .iter()
+        .map(|v| Box::new(v.clone()) as _)
+        .collect();
+    response.trains
+        .iter()
+        .map(|train| {
+            let arrival_as_number=  train.min.parse::<i64>();
 
-        TrainDisplayEntry {
-            arrival: train.min.clone(),
-            arrival_timestamp: Utc::now() + TimeDelta::minutes(if arrival_as_number.is_ok() {arrival_as_number.unwrap()} else {0}),
-            destination: if train.destination == "No Passenger" || train.destination == "NoPssenger" || train.destination == "ssenger" { "No Psngr".to_string() } else { train.destination.clone() },
-            line: train.line,
-            line_color: get_line_color(train.line)
-        }
-    }).sorted().map(|v| Box::new(v) as _).collect()
+            Box::new(TrainDisplayEntry {
+                arrival: train.min.clone(),
+                arrival_timestamp: Utc::now() + TimeDelta::minutes(if arrival_as_number.is_ok() {arrival_as_number.unwrap()} else {0}),
+                destination: if train.destination == "No Passenger" || train.destination == "NoPssenger" || train.destination == "ssenger" { "No Psngr".to_string() } else { train.destination.clone() },
+                line: train.line,
+                line_color: get_line_color(train.line)
+            }) as _
+        })
+        .chain(extra_msg)
+        .sorted()
+        .collect()
 }
 
 // pub fn render<D>(widget: ArrivalWidget, canvas: D) {
