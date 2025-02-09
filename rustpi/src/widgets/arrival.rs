@@ -52,6 +52,7 @@ pub trait ArrivalDisplayable {
     fn get_line(&self) -> Line;
     fn get_line_color(&self) -> Rgb888;
     fn pretty_print(&self) -> String;
+    fn is_sticky(&self) -> bool;
 }
 
 impl ArrivalDisplayable for TrainDisplayEntry {
@@ -84,6 +85,10 @@ impl ArrivalDisplayable for TrainDisplayEntry {
             }
         }
     }
+
+    fn is_sticky(&self) -> bool {
+        false
+    }
 }
 
 impl ArrivalDisplayable for ArrivalMessage {
@@ -100,15 +105,18 @@ impl ArrivalDisplayable for ArrivalMessage {
     }
 
     fn pretty_print(&self) -> String {
-        format!("{} {} {}", get_line_string(self.get_line()), self.message, Utc::now() - self.get_comparison_timestamp())
+        format!("{} {} {}", get_line_string(self.get_line()), self.message, (self.get_comparison_timestamp() - Utc::now()).num_minutes())
     }
-
     
     fn get_comparison_timestamp(&self) -> DateTime<Utc> {
         match self.sticky {
             true => DateTime::from_timestamp(0, 0).unwrap(),  // Put sticky messages on top
-            false => DateTime::from_timestamp(self.time, 0).expect("Invalid timestamp on custom arrival message")
+            false => DateTime::from_timestamp_millis(self.time).expect("Invalid timestamp on custom arrival message")
         }
+    }
+
+    fn is_sticky(&self) -> bool {
+        self.sticky
     }
 }
 
@@ -236,6 +244,7 @@ pub async fn get_latest_state(arrival_state: ArrivalWidget) -> Result<Vec<Box<dy
 fn convert_api_return_to_display(response: PredictionApiReturn, extra_messages: Option<Vec<ArrivalMessage>>) -> Vec<Box<dyn ArrivalDisplayable>> {
     let extra_msg: Vec<Box<dyn ArrivalDisplayable>> = extra_messages.unwrap_or(Vec::new())
         .iter()
+        .filter(|v | v.is_sticky() || (v.get_comparison_timestamp() - Utc::now()).num_seconds() >= 0) // Filter out custom messages that have expired
         .map(|v| Box::new(v.clone()) as _)
         .collect();
     response.trains
