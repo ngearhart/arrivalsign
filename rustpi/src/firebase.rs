@@ -18,13 +18,21 @@ pub struct Alert {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AlertWidget {
     name: String,
-    pub alerts: Vec<Alert>
+    pub alerts: Vec<Alert>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ArrivalWidget {
     name: String,
-    pub station_id: String
+    pub station_id: String,
+    pub messages: Option<Vec<ArrivalMessage>>
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ArrivalMessage {
+    pub message: String,
+    pub sticky: bool,
+    pub time: i64
 }
 
 impl AlertWidget {

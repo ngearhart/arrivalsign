@@ -6,6 +6,8 @@ use embedded_graphics::pixelcolor::Rgb888;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
+use crate::firebase::{ArrivalMessage, ArrivalWidget};
+
 
 // These structs are a mess to account for what likely is .NET naming convention.
 
@@ -48,6 +50,50 @@ trait TimestampCompare {
     fn get_comparison_timestamp(&self) -> DateTime<Utc>;
 }
 
+pub trait ArrivalDisplayable {
+    fn get_message(&self) -> String;
+    fn get_line(&self) -> Line;
+    fn get_line_color(&self) -> Rgb888;
+    fn pretty_print(&self) -> String;
+}
+
+impl ArrivalDisplayable for TrainDisplayEntry {
+    fn get_message(&self) -> String {
+        self.destination.clone()
+    }
+
+    fn get_line(&self) -> Line {
+        self.line
+    }
+
+    fn get_line_color(&self) -> Rgb888 {
+        self.line_color
+    }
+
+    fn pretty_print(&self) -> String {
+        format!("{} {} {}", get_line_string(self.line), self.destination, self.arrival)
+    }
+}
+
+
+impl ArrivalDisplayable for ArrivalMessage {
+    fn get_message(&self) -> String {
+        self.message.clone()
+    }
+
+    fn get_line(&self) -> Line {
+        Line::TS
+    }
+
+    fn get_line_color(&self) -> Rgb888 {
+        get_line_color(Line::TS)
+    }
+
+    fn pretty_print(&self) -> String {
+        format!("{} {} {}", get_line_string(self.get_line()), self.message, Utc::now() - self.get_comparison_timestamp())
+    }
+}
+
 impl TimestampCompare for TrainDisplayEntry {
     fn get_comparison_timestamp(&self) -> DateTime<Utc> {
         match self.arrival.parse::<i64>() {
@@ -60,6 +106,15 @@ impl TimestampCompare for TrainDisplayEntry {
                 }
                 return Utc::now() + TimeDelta::days(1);  // If something else, put it far below
             }
+        }
+    }
+}
+
+impl TimestampCompare for ArrivalMessage {
+    fn get_comparison_timestamp(&self) -> DateTime<Utc> {
+        match self.sticky {
+            true => DateTime::from_timestamp(0, 0).unwrap(),  // Put sticky messages on top
+            false => DateTime::from_timestamp(self.time, 0).expect("Invalid timestamp on custom arrival message")
         }
     }
 }
@@ -111,10 +166,22 @@ fn get_line_color(line: Line) -> Rgb888 {
     }
 }
 
-pub async fn get_latest_state(station_code: &str) -> Result<Vec<TrainDisplayEntry>, Box<dyn Error>> {
+fn get_line_string(line: Line) -> String {
+    match line {
+        Line::RD => String::from("RD"),
+        Line::OR => String::from("OR"),
+        Line::YL => String::from("YL"),
+        Line::GR => String::from("GR"),
+        Line::BL => String::from("BL"),
+        Line::TS => String::from("TS"),
+        _ => String::from("SV"),
+    }
+}
+
+pub async fn get_latest_state(arrival_state: ArrivalWidget) -> Result<Vec<Box<dyn ArrivalDisplayable>>, Box<dyn Error>> {
 
     let mut url = API_URL.to_owned();
-    url.push_str(station_code);
+    url.push_str(&arrival_state.station_id);
 
     let client = reqwest::Client::new();
 
@@ -124,7 +191,7 @@ pub async fn get_latest_state(station_code: &str) -> Result<Vec<TrainDisplayEntr
         .await {
             Ok(resp) => {
                 let api_return= resp.json::<PredictionApiReturn>().await.expect("Should be deserializable");
-                Ok(convert_api_return_to_display(api_return))
+                Ok(convert_api_return_to_display(api_return, arrival_state.messages))
             }
             Err(err) => {
                 println!("Reqwest Error: {}", err);
@@ -133,7 +200,7 @@ pub async fn get_latest_state(station_code: &str) -> Result<Vec<TrainDisplayEntr
         }
 }
 
-fn convert_api_return_to_display(response: PredictionApiReturn) -> Vec<TrainDisplayEntry> {
+fn convert_api_return_to_display(response: PredictionApiReturn, extra_messages: Option<Vec<ArrivalMessage>>) -> Vec<Box<dyn ArrivalDisplayable>> {
     response.trains.iter().map(|train| {
         let arrival_as_number=  train.min.parse::<i64>();
 
@@ -144,7 +211,7 @@ fn convert_api_return_to_display(response: PredictionApiReturn) -> Vec<TrainDisp
             line: train.line,
             line_color: get_line_color(train.line)
         }
-    }).sorted().collect()
+    }).sorted().map(|v| Box::new(v) as _).collect()
 }
 
 // pub fn render<D>(widget: ArrivalWidget, canvas: D) {

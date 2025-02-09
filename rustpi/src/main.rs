@@ -6,8 +6,8 @@ mod widgets;
 
 use dotenv::dotenv;
 use firebase::{AlertWidget, ArrivalWidget, LoadableWidget};
-use widgets::arrival::get_latest_state;
-use std::{thread, time::Duration};
+use widgets::arrival::{get_latest_state, ArrivalDisplayable, TrainDisplayEntry};
+use std::{ops::Deref, thread, time::Duration};
 
 use embedded_graphics::{
     mono_font::{ascii::FONT_4X6, MonoTextStyle},
@@ -18,7 +18,7 @@ use embedded_graphics::{
     pixelcolor::BinaryColor
 };
 
-use itertools::Itertools;
+use itertools::{join, Itertools};
 
 use embedded_graphics_simulator::{OutputSettingsBuilder, SimulatorEvent, Window};
 #[cfg(feature = "rpi")]
@@ -126,13 +126,13 @@ async fn main() {
     let a = ArrivalWidget::load().await;
     let b = AlertWidget::load().await;
 
-    println!("{}", a.station_id);
     // println!("{}", b.get_messages().join(", "));
     // println!("{}", b.alerts.iter().cloned().map(|alert| alert.message).join(", "));
 
-    let state = get_latest_state(&a.station_id).await;
-    println!("{:?}", state);
-    
+    let state = get_latest_state(a).await;
+    println!("{}", join(state.unwrap().iter().map(|item| {
+       item.pretty_print()
+    }), "\n"));
 
     'running: loop {
 
