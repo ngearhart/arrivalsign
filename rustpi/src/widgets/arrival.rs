@@ -1,9 +1,9 @@
-// struct TrainState {
+use core::num;
+use std::{cmp::Ordering, collections::HashMap, env, error::Error, fmt::Debug};
 
-// }
-
-use std::{collections::HashMap, env, error::Error, fmt::Debug};
-
+use chrono::{DateTime, TimeDelta, Utc};
+use embedded_graphics::pixelcolor::Rgb888;
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 
@@ -24,9 +24,9 @@ struct Train {
     #[serde(rename(deserialize = "DestinationCode"))]
     destination_code: String,
     #[serde(rename(deserialize = "Group"))]
-    group: String,
+    group: String,  // Track ID - usually 1 or 2
     #[serde(rename(deserialize = "Line"))]
-    line: String,
+    line: Line,
     #[serde(rename(deserialize = "LocationCode"))]
     location_code: String,
     #[serde(rename(deserialize = "LocationName"))]
@@ -35,10 +35,83 @@ struct Train {
     min: String
 }
 
+#[derive(Debug, Clone)]
+pub struct TrainDisplayEntry {
+    line: Line,
+    line_color: Rgb888,
+    destination: String,
+    arrival: String,  // Can be in minutes or ARR, BRD
+    arrival_timestamp: DateTime<Utc> 
+}
+
+trait TimestampCompare {
+    fn get_comparison_timestamp(&self) -> DateTime<Utc>;
+}
+
+impl TimestampCompare for TrainDisplayEntry {
+    fn get_comparison_timestamp(&self) -> DateTime<Utc> {
+        match self.arrival.parse::<i64>() {
+            Ok(_) => self.arrival_timestamp,  // Use the arrival timestamp by default
+            Err(_) => {
+                if self.arrival == "ARR" {
+                    return Utc::now() - TimeDelta::seconds(60); // If ARR, sort as if it arrived 1 minute ago
+                } else if self.arrival == "BRD" {
+                    return Utc::now() - TimeDelta::seconds(120); // If BRD, sort as if it arrived 2 minutes ago
+                }
+                return Utc::now() + TimeDelta::days(1);  // If something else, put it far below
+            }
+        }
+    }
+}
+
+impl Ord for TrainDisplayEntry {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.get_comparison_timestamp().cmp(&other.get_comparison_timestamp())
+    }
+}
+
+impl PartialOrd for TrainDisplayEntry {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.get_comparison_timestamp().cmp(&other.get_comparison_timestamp()))
+    }
+}
+
+impl PartialEq for TrainDisplayEntry {
+    fn eq(&self, other: &Self) -> bool {
+        self.get_comparison_timestamp() == other.get_comparison_timestamp()
+    }
+}
+
+impl Eq for TrainDisplayEntry {}
+
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+pub enum Line {
+   RD,
+   OR,
+   SV,
+   YL,
+   GR,
+   BL,
+   TS,
+}
+
 const API_URL: &str = "https://api.wmata.com/StationPrediction.svc/json/GetPrediction/";
 const API_KEY_HEADER: &str = "api_key";
 
-pub async fn get_latest_state(station_code: &str) -> Result<(), Box<dyn Error>> {
+fn get_line_color(line: Line) -> Rgb888 {
+    match line {
+        Line::RD => Rgb888::new(255, 0, 0),
+        Line::OR => Rgb888::new(255, 85, 0),
+        Line::YL => Rgb888::new(255, 255, 0),
+        Line::GR => Rgb888::new(0, 255, 0),
+        Line::BL => Rgb888::new(0, 0, 255),
+        Line::TS => Rgb888::new(0, 51, 160),
+        _ => Rgb888::new(170, 170, 170)
+    }
+}
+
+pub async fn get_latest_state(station_code: &str) -> Result<Vec<TrainDisplayEntry>, Box<dyn Error>> {
 
     let mut url = API_URL.to_owned();
     url.push_str(station_code);
@@ -50,16 +123,28 @@ pub async fn get_latest_state(station_code: &str) -> Result<(), Box<dyn Error>> 
         .send()
         .await {
             Ok(resp) => {
-                let text= resp.json::<PredictionApiReturn>().await.expect("Should be deserializable");
-                println!("{text:#?}");
-                
-                Ok(())
+                let api_return= resp.json::<PredictionApiReturn>().await.expect("Should be deserializable");
+                Ok(convert_api_return_to_display(api_return))
             }
             Err(err) => {
                 println!("Reqwest Error: {}", err);
                 Err(Box::new(err))
             }
         }
+}
+
+fn convert_api_return_to_display(response: PredictionApiReturn) -> Vec<TrainDisplayEntry> {
+    response.trains.iter().map(|train| {
+        let arrival_as_number=  train.min.parse::<i64>();
+
+        TrainDisplayEntry {
+            arrival: train.min.clone(),
+            arrival_timestamp: Utc::now() + TimeDelta::minutes(if arrival_as_number.is_ok() {arrival_as_number.unwrap()} else {0}),
+            destination: if train.destination == "No Passenger" || train.destination == "NoPssenger" || train.destination == "ssenger" { "No Psngr".to_string() } else { train.destination.clone() },
+            line: train.line,
+            line_color: get_line_color(train.line)
+        }
+    }).sorted().collect()
 }
 
 // pub fn render<D>(widget: ArrivalWidget, canvas: D) {

@@ -131,7 +131,7 @@ async fn main() {
     // println!("{}", b.alerts.iter().cloned().map(|alert| alert.message).join(", "));
 
     let state = get_latest_state(&a.station_id).await;
-
+    println!("{:?}", state);
     
 
     'running: loop {
