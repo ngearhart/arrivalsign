@@ -2,9 +2,11 @@
 compile_error!("feature \"rpi\" and feature \"simulator\" cannot be enabled at the same time");
 
 mod firebase;
+mod widgets;
 
 use dotenv::dotenv;
 use firebase::{AlertWidget, ArrivalWidget, LoadableWidget};
+use widgets::arrival::get_latest_state;
 use std::{thread, time::Duration};
 
 use embedded_graphics::{
@@ -125,17 +127,21 @@ async fn main() {
     let b = AlertWidget::load().await;
 
     println!("{}", a.station_id);
-    println!("{}", b.get_messages().join(", "));
+    // println!("{}", b.get_messages().join(", "));
     // println!("{}", b.alerts.iter().cloned().map(|alert| alert.message).join(", "));
 
-    // 'running: loop {
+    let state = get_latest_state(&a.station_id).await;
 
-    //     window.update(&canvas);
+    
 
-    //     if window.events().any(|e| e == SimulatorEvent::Quit) {
-    //         break 'running;
-    //     }
+    'running: loop {
 
-    //     thread::sleep(Duration::from_millis(50));
-    // }
+        window.update(&canvas);
+
+        if window.events().any(|e| e == SimulatorEvent::Quit) {
+            break 'running;
+        }
+
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
 }
