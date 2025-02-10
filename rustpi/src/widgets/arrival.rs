@@ -3,8 +3,8 @@ use std::{cmp::Ordering, collections::HashMap, env, error::Error, fmt::Debug, op
 
 use cached::proc_macro::cached;
 use chrono::{DateTime, TimeDelta, Utc};
-use embedded_graphics::{mono_font::{ascii::FONT_7X14, MonoTextStyle}, pixelcolor::Rgb888, prelude::{DrawTarget, Point}, text::Text, Drawable};
-use itertools::Itertools;
+use embedded_graphics::{mono_font::{ascii::FONT_7X14, MonoTextStyle}, pixelcolor::Rgb888, prelude::{DrawTarget, Point, Primitive}, primitives::{PrimitiveStyle, Rectangle}, text::Text, Drawable};
+use itertools::{join, Itertools};
 use serde::{Deserialize, Serialize};
 
 use crate::firebase::{ArrivalMessage, ArrivalWidget};
@@ -49,11 +49,14 @@ pub struct TrainDisplayEntry {
 
 pub trait ArrivalDisplayable {
     fn get_comparison_timestamp(&self) -> DateTime<Utc>;
+    fn get_comparison_timestamp_no_sticky(&self) -> DateTime<Utc>;
     fn get_message(&self) -> String;
     fn get_line(&self) -> Line;
     fn get_line_color(&self) -> Rgb888;
     fn pretty_print(&self) -> String;
+    fn get_leave(&self) -> String;
     fn is_sticky(&self) -> bool;
+    fn get_arrival_time(&self) -> String;
 }
 
 impl ArrivalDisplayable for TrainDisplayEntry {
@@ -87,8 +90,23 @@ impl ArrivalDisplayable for TrainDisplayEntry {
         }
     }
 
+    fn get_comparison_timestamp_no_sticky(&self) -> DateTime<Utc> {
+        self.get_comparison_timestamp()
+    }
+
     fn is_sticky(&self) -> bool {
         false
+    }
+
+    fn get_leave(&self) -> String {
+        match self.arrival.parse::<i64>() {
+            Ok(_) => if self.arrival_timestamp - TimeDelta::minutes(15) > Utc::now() { (self.arrival_timestamp - TimeDelta::minutes(15) - Utc::now()).num_minutes().to_string() } else { "- ".to_string() },
+            Err(_) => "- ".to_string()
+        }
+    }
+
+    fn get_arrival_time(&self) -> String {
+        self.arrival.clone()
     }
 }
 
@@ -109,6 +127,10 @@ impl ArrivalDisplayable for ArrivalMessage {
         format!("{} {} {}", get_line_string(self.get_line()), self.message, (self.get_comparison_timestamp() - Utc::now()).num_minutes())
     }
     
+    fn get_comparison_timestamp_no_sticky(&self) -> DateTime<Utc> {
+        DateTime::from_timestamp_millis(self.time).expect("Invalid timestamp on custom arrival message")
+    }
+
     fn get_comparison_timestamp(&self) -> DateTime<Utc> {
         match self.sticky {
             true => DateTime::from_timestamp(0, 0).unwrap(),  // Put sticky messages on top
@@ -118,6 +140,18 @@ impl ArrivalDisplayable for ArrivalMessage {
 
     fn is_sticky(&self) -> bool {
         self.sticky
+    }
+
+    fn get_leave(&self) -> String {
+        if self.get_comparison_timestamp() - TimeDelta::minutes(15) > Utc::now() {
+            (Utc::now() - self.get_comparison_timestamp() - TimeDelta::minutes(15)).num_minutes().to_string()
+        } else {
+            "- ".to_string() 
+        }
+    }
+
+    fn get_arrival_time(&self) -> String {
+        (DateTime::from_timestamp_millis(self.time).expect("Invalid timestamp on custom arrival message") - Utc::now()).num_minutes().to_string()
     }
 }
 
@@ -196,6 +230,7 @@ pub enum Line {
 const API_URL: &str = "https://api.wmata.com/StationPrediction.svc/json/GetPrediction/";
 const API_KEY_HEADER: &str = "api_key";
 const LINE_HEIGHT: i32 = 10;
+const LINE_HEIGHT_WITH_PADDING: i32 = 12;
 
 fn get_line_color(line: Line) -> Rgb888 {
     match line {
@@ -246,7 +281,7 @@ pub async fn get_latest_state(arrival_state: ArrivalWidget) -> Result<Vec<Box<dy
 fn convert_api_return_to_display(response: PredictionApiReturn, extra_messages: Option<Vec<ArrivalMessage>>) -> Vec<Box<dyn ArrivalDisplayable>> {
     let extra_msg: Vec<Box<dyn ArrivalDisplayable>> = extra_messages.unwrap_or(Vec::new())
         .iter()
-        .filter(|v | v.is_sticky() || (v.get_comparison_timestamp() - Utc::now()).num_seconds() >= 0) // Filter out custom messages that have expired
+        .filter(|v | (v.get_comparison_timestamp_no_sticky() - Utc::now()).num_seconds() >= 0) // Filter out custom messages that have expired
         .map(|v| Box::new(v.clone()) as _)
         .collect();
     response.trains
@@ -268,10 +303,48 @@ fn convert_api_return_to_display(response: PredictionApiReturn, extra_messages: 
 }
 
 pub fn render_arrival_display<D>(state: Vec<Box<dyn ArrivalDisplayable>>, canvas: &mut D) where D: DrawTarget<Color = Rgb888>, <D as DrawTarget>::Error: Debug {
+    let white_text_style = MonoTextStyle::new(&FONT_7X14, Rgb888::new(255, 255, 255));
     // Header
     let header_text_style = MonoTextStyle::new(&FONT_7X14, Rgb888::new(120, 120, 120));
     Text::new( "LN  DEST    LV MIN", Point::new(1, LINE_HEIGHT), header_text_style)
         .draw(canvas)
         .unwrap();
+
+    for (index, message) in state.iter().enumerate() {
+        // Draw left rectangle
+        Rectangle::with_corners(
+            Point::new(1, LINE_HEIGHT_WITH_PADDING * (index as i32 + 2)),
+            Point::new(2, LINE_HEIGHT_WITH_PADDING * (index as i32 + 1) + (LINE_HEIGHT_WITH_PADDING - LINE_HEIGHT))
+        )
+            .into_styled(PrimitiveStyle::with_fill(message.get_line_color()))
+            .draw(canvas).unwrap();
+
+        // Draw line text
+        Text::new( 
+            &get_line_string(message.get_line()),
+            Point::new(5, LINE_HEIGHT_WITH_PADDING * (index as i32 + 2)),
+            MonoTextStyle::new(&FONT_7X14, message.get_line_color())
+        )
+            .draw(canvas)
+            .unwrap();
+
+        // Draw LEAVE - Custom for this sign to indicate when to leave the office to catch this train (15 minutes before)
+        Text::new( 
+            &message.get_leave(),
+            Point::new(84, LINE_HEIGHT_WITH_PADDING * (index as i32 + 2)),
+            white_text_style
+        )
+            .draw(canvas)
+            .unwrap();
+
+        // Draw minutes
+        Text::new( 
+            &message.get_arrival_time(),
+            Point::new(106, LINE_HEIGHT_WITH_PADDING * (index as i32 + 2)),
+            white_text_style
+        )
+            .draw(canvas)
+            .unwrap();
+    }
 }
 

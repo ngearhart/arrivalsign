@@ -144,6 +144,6 @@ async fn main() {
             break 'running;
         }
 
-        tokio::time::sleep(Duration::from_millis(50)).await;
+        tokio::time::sleep(Duration::from_millis(250)).await;
     }
 }
