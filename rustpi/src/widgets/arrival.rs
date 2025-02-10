@@ -1,8 +1,9 @@
 use core::num;
 use std::{cmp::Ordering, collections::HashMap, env, error::Error, fmt::Debug, ops::Deref};
 
+use cached::proc_macro::cached;
 use chrono::{DateTime, TimeDelta, Utc};
-use embedded_graphics::pixelcolor::Rgb888;
+use embedded_graphics::{mono_font::{ascii::FONT_7X14, MonoTextStyle}, pixelcolor::Rgb888, prelude::{DrawTarget, Point}, text::Text, Drawable};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
@@ -194,6 +195,7 @@ pub enum Line {
 
 const API_URL: &str = "https://api.wmata.com/StationPrediction.svc/json/GetPrediction/";
 const API_KEY_HEADER: &str = "api_key";
+const LINE_HEIGHT: i32 = 10;
 
 fn get_line_color(line: Line) -> Rgb888 {
     match line {
@@ -265,6 +267,11 @@ fn convert_api_return_to_display(response: PredictionApiReturn, extra_messages: 
         .collect()
 }
 
-// pub fn render<D>(widget: ArrivalWidget, canvas: D) {
-    
-// }
+pub fn render_arrival_display<D>(state: Vec<Box<dyn ArrivalDisplayable>>, canvas: &mut D) where D: DrawTarget<Color = Rgb888>, <D as DrawTarget>::Error: Debug {
+    // Header
+    let header_text_style = MonoTextStyle::new(&FONT_7X14, Rgb888::new(120, 120, 120));
+    Text::new( "LN  DEST    LV MIN", Point::new(1, LINE_HEIGHT), header_text_style)
+        .draw(canvas)
+        .unwrap();
+}
+

@@ -6,7 +6,7 @@ mod widgets;
 
 use dotenv::dotenv;
 use firebase::{AlertWidget, ArrivalWidget, LoadableWidget};
-use widgets::arrival::{get_latest_state, ArrivalDisplayable, TrainDisplayEntry};
+use widgets::arrival::{get_latest_state, render_arrival_display, ArrivalDisplayable, TrainDisplayEntry};
 use std::{ops::Deref, thread, time::Duration};
 
 use embedded_graphics::{
@@ -27,12 +27,12 @@ use rpi_led_matrix::{args, LedMatrix};
 #[cfg(feature = "simulator")]
 use embedded_graphics_simulator::SimulatorDisplay;
 
-const WIDTH: u32 = 64;
-const HEIGHT: u32 = 32; 
+const WIDTH: u32 = 64 * 2;
+const HEIGHT: u32 = 32 * 2;
 
 // Change depending on your monitor resolution.
 #[cfg(feature = "simulator")]
-const WINDOW_SCALING: u32 = 16;
+const WINDOW_SCALING: u32 = 8;
 
 #[cfg(feature = "rpi")]
 fn get_canvas() {
@@ -65,7 +65,7 @@ async fn main() {
     // let mut canvas = matrix.canvas();
 
     // Create styles used by the drawing operations.
-    let thin_stroke = PrimitiveStyle::with_stroke(Rgb888::new(64, 0, 128), 1);
+    // let thin_stroke = PrimitiveStyle::with_stroke(Rgb888::new(64, 0, 128), 1);
     // let fill = PrimitiveStyle::with_fill(Rgb888::new(0, 128, 32));
     // let text_style = MonoTextStyle::new(&FONT_4X6, Rgb888::new(0xff, 0xff, 0xff));
 
@@ -75,15 +75,15 @@ async fn main() {
 
     let mut canvas = get_canvas();
 
-    let display_size = canvas.size();
-    let (width, height) = (display_size.width, display_size.height);
-    Rectangle::with_corners(
-        Point::zero(),
-        Point::new(width as i32 - 1, height as i32 - 1),
-    )
-    .into_styled(thin_stroke)
-    .draw(&mut canvas)
-    .unwrap();
+    // let display_size = canvas.size();
+    // let (width, height) = (display_size.width, display_size.height);
+    // Rectangle::with_corners(
+    //     Point::zero(),
+    //     Point::new(width as i32 - 1, height as i32 - 1),
+    // )
+    // .into_styled(thin_stroke)
+    // .draw(&mut canvas)
+    // .unwrap();
 
     // // Draw a triangle.
     // Triangle::new(
@@ -129,10 +129,12 @@ async fn main() {
     // println!("{}", b.get_messages().join(", "));
     // println!("{}", b.alerts.iter().cloned().map(|alert| alert.message).join(", "));
 
-    let state = get_latest_state(a).await;
-    println!("{}", join(state.unwrap().iter().map(|item| {
+    let state = get_latest_state(a).await.unwrap();
+    println!("{}", join(state.iter().map(|item| {
        item.pretty_print()
     }), "\n"));
+
+    render_arrival_display(state, &mut canvas);
 
     'running: loop {
 
