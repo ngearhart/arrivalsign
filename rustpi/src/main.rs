@@ -6,6 +6,7 @@ mod widgets;
 
 use chrono::Utc;
 use dotenv::dotenv;
+use env_logger::Builder;
 use firebase::{AlertWidget, ArrivalWidget, LoadableWidget};
 use tokio::{select, spawn, sync::{mpsc, oneshot, watch, Mutex}, time::interval};
 use widgets::arrival::{get_latest_state, render_arrival_display, spawn_arrival_update_task, ArrivalDisplayable, ArrivalState, SimpleArrivalDisplayable, TrainDisplayEntry};
@@ -50,6 +51,8 @@ fn get_canvas() -> SimulatorDisplay<Rgb888> {
 #[tokio::main]
 async fn main() {
     dotenv().ok();
+    env_logger::init();
+
     // let app = args::add_matrix_args(
     //     App::new("C++ Library Example")
     //         .about("shows basic usage of matrix arguments")
@@ -182,6 +185,6 @@ async fn main() {
 
     
         // interval.tick().await;
-        tokio::time::sleep(Duration::from_millis(100)).await;
+        tokio::time::sleep(Duration::from_millis(50)).await;
     }
 }

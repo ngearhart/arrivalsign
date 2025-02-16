@@ -5,10 +5,11 @@ use chrono::{DateTime, TimeDelta, Utc};
 use embedded_graphics::{mono_font::{ascii::FONT_7X14, MonoTextStyle}, pixelcolor::Rgb888, prelude::{DrawTarget, Point, Primitive}, primitives::{PrimitiveStyle, Rectangle}, text::Text, Drawable};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
+use serde_json::{from_str, Deserializer};
 use tokio::{spawn, sync::watch::Sender, task::JoinHandle};
 
 use crate::firebase::{ArrivalMessage, ArrivalWidget, LoadableWidget};
-
+use log::debug;
 
 // These structs are a mess to account for what likely is .NET naming convention.
 
@@ -29,13 +30,19 @@ struct Train {
     #[serde(rename(deserialize = "Group"))]
     group: String,  // Track ID - usually 1 or 2
     #[serde(rename(deserialize = "Line"))]
-    line: Line,
+    line: String,
     #[serde(rename(deserialize = "LocationCode"))]
     location_code: String,
     #[serde(rename(deserialize = "LocationName"))]
     location_name: String,
     #[serde(rename(deserialize = "Min"))]
     min: String
+}
+
+impl Train {
+    fn get_line_enum(self: &Self) -> Line {
+        get_string_line(&self.line)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -281,6 +288,7 @@ pub enum Line {
    GR,
    BL,
    TS,
+   UNKNOWN,
 }
 
 const API_URL: &str = "https://api.wmata.com/StationPrediction.svc/json/GetPrediction/";
@@ -297,7 +305,8 @@ fn get_line_color(line: Line) -> Rgb888 {
         Line::GR => Rgb888::new(0, 255, 0),
         Line::BL => Rgb888::new(0, 0, 255),
         Line::TS => Rgb888::new(0, 51, 160),
-        _ => Rgb888::new(170, 170, 170)
+        Line::SV => Rgb888::new(170, 170, 170),
+        _ => Rgb888::new(110, 110, 110)
     }
 }
 
@@ -309,7 +318,21 @@ fn get_line_string(line: Line) -> String {
         Line::GR => String::from("GR"),
         Line::BL => String::from("BL"),
         Line::TS => String::from("TS"),
-        _ => String::from("SV"),
+        Line::SV => String::from("SV"),
+        Line::UNKNOWN => String::from("??")
+    }
+}
+
+fn get_string_line(line: &str) -> Line {
+    match line {
+        "RD" => Line::RD,
+        "OR" => Line::OR,
+        "YL" => Line::YL,
+        "GR" => Line::GR,
+        "BL" => Line::BL,
+        "TS" => Line::TS,
+        "SV" => Line::SV,
+        _ => Line::UNKNOWN
     }
 }
 
@@ -325,11 +348,10 @@ pub async fn get_latest_state(arrival_state: ArrivalWidget) -> Result<Vec<Simple
         .send()
         .await {
             Ok(resp) => {
-                // println!("{}", resp.text().await.as_ref().unwrap());
-                // let api_return = PredictionApiReturn {
-                //     trains: Vec::new()
-                // };
-                let api_return= resp.json::<PredictionApiReturn>().await.expect("Should be deserializable");
+                let raw = resp.bytes().await.expect("API did not respond");
+                let raw_string = String::from_utf8(raw.to_vec()).expect("Response has invalid UTF-8");
+                debug!(target: "arrival_state_update", "{}", raw_string);
+                let api_return= from_str(&raw_string).expect("Could not deserialize to JSON");
                 let converted = convert_api_return_to_display(api_return, arrival_state.messages);
                 let result: Vec<SimpleArrivalDisplayable> = converted.iter().map(|f| SimpleArrivalDisplayable {
                     comparison_timestamp: f.get_comparison_timestamp(),
@@ -365,8 +387,8 @@ fn convert_api_return_to_display(response: PredictionApiReturn, extra_messages: 
                 arrival: train.min.clone(),
                 arrival_timestamp: Utc::now() + TimeDelta::minutes(if arrival_as_number.is_ok() {arrival_as_number.unwrap()} else {0}),
                 destination: if train.destination == "No Passenger" || train.destination == "NoPssenger" || train.destination == "ssenger" { "No Psngr".to_string() } else { train.destination.clone() },
-                line: train.line,
-                line_color: get_line_color(train.line)
+                line: train.get_line_enum(),
+                line_color: get_line_color(train.get_line_enum())
             }) as _
         })
         .chain(extra_msg)
@@ -400,6 +422,15 @@ pub fn render_arrival_display<D, T>(state: Vec<T>, canvas: &mut D) where D: Draw
             .draw(canvas)
             .unwrap();
 
+        // Draw message
+        Text::new(
+            &message.get_message(),
+            Point::new(29, LINE_HEIGHT_WITH_PADDING * (index as i32 + 2)),
+            MonoTextStyle::new(&FONT_7X14, message.get_line_color())
+        )
+            .draw(canvas)
+            .unwrap();
+
         // Draw LEAVE - Custom for this sign to indicate when to leave the office to catch this train (15 minutes before)
         Text::new( 
             &message.get_leave(),
@@ -423,13 +454,13 @@ pub fn render_arrival_display<D, T>(state: Vec<T>, canvas: &mut D) where D: Draw
 pub fn spawn_arrival_update_task(state_tx: Sender<ArrivalState>) -> JoinHandle<()> {
     spawn(async move {
         loop {
-            println!("Loading new state...");
+            debug!(target: "arrival_state_update", "Loading new state...");
             let arrival_displayables = get_latest_state(ArrivalWidget::load().await).await.unwrap();
             let new_state = ArrivalState {
                 messages: arrival_displayables,
                 last_update: Utc::now(),
             };
-            println!("New state loaded. Sending...");
+            debug!(target: "arrival_state_update", "New state loaded. Sending to main thread.");
             state_tx.send(new_state).unwrap();
             tokio::time::sleep(Duration::from_millis(5000)).await;
         }
