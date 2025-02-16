@@ -78,6 +78,21 @@ pub struct SimpleArrivalDisplayable {
     arrival_time: String
 }
 
+impl SimpleArrivalDisplayable {
+    pub fn loading() -> Self {
+        SimpleArrivalDisplayable {
+            comparison_timestamp: Utc::now(),
+            comparison_timestamp_no_sticky: Utc::now(),
+            message: String::from("Loading..."),
+            line: Line::UNKNOWN,
+            line_color: Rgb888::new(50, 50, 50),
+            leave: String::from(""),
+            is_sticky: true,
+            arrival_time: String::from("")
+        }
+    }
+}
+
 impl ArrivalDisplayable for SimpleArrivalDisplayable {
     fn get_comparison_timestamp(&self) -> DateTime<Utc> {
         self.comparison_timestamp
@@ -454,6 +469,7 @@ pub fn render_arrival_display<D, T>(state: Vec<T>, canvas: &mut D) where D: Draw
 pub fn spawn_arrival_update_task(state_tx: Sender<ArrivalState>) -> JoinHandle<()> {
     spawn(async move {
         loop {
+            tokio::time::sleep(Duration::from_millis(5000)).await;
             debug!(target: "arrival_state_update", "Loading new state...");
             let arrival_displayables = get_latest_state(ArrivalWidget::load().await).await.unwrap();
             let new_state = ArrivalState {

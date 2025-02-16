@@ -9,7 +9,7 @@ use dotenv::dotenv;
 use env_logger::Builder;
 use firebase::{AlertWidget, ArrivalWidget, LoadableWidget};
 use tokio::{select, spawn, sync::{mpsc, oneshot, watch, Mutex}, time::interval};
-use widgets::arrival::{get_latest_state, render_arrival_display, spawn_arrival_update_task, ArrivalDisplayable, ArrivalState, SimpleArrivalDisplayable, TrainDisplayEntry};
+use widgets::arrival::{get_latest_state, render_arrival_display, spawn_arrival_update_task, ArrivalDisplayable, ArrivalState, Line, SimpleArrivalDisplayable, TrainDisplayEntry};
 use std::{io::Read, ops::Deref, sync::{Arc, LazyLock, RwLock}, thread, time::Duration};
 
 use embedded_graphics::{
@@ -128,8 +128,8 @@ async fn main() {
         .build();
     let mut window = Window::new("Metro Sign Simulator", &output_settings);
 
-    let a = ArrivalWidget::load().await;
-    let b = AlertWidget::load().await;
+    // let a = ArrivalWidget::load().await;
+    // let b = AlertWidget::load().await;
 
     // println!("{}", b.get_messages().join(", "));
     // println!("{}", b.alerts.iter().cloned().map(|alert| alert.message).join(", "));
@@ -140,7 +140,9 @@ async fn main() {
     // }), "\n"));
 
     // let (tx, mut rx) = mpsc::channel(32);
-    let (tx, mut rx) = watch::channel(ArrivalState { messages: Vec::new(), last_update: Utc::now() });
+    let mut loading_message: Vec<SimpleArrivalDisplayable> = Vec::new();
+    loading_message.push(SimpleArrivalDisplayable::loading());
+    let (tx, mut rx) = watch::channel(ArrivalState { messages: loading_message, last_update: Utc::now() });
     spawn_arrival_update_task(tx);
 
 
@@ -148,7 +150,6 @@ async fn main() {
 
 
     'running: loop {
-
         let mut messages: Vec<SimpleArrivalDisplayable> = Vec::new();
 
         let res = rx.has_changed();
