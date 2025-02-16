@@ -400,7 +400,7 @@ pub fn render_arrival_display<D, T>(state: Vec<T>, canvas: &mut D) where D: Draw
     let white_text_style = MonoTextStyle::new(&FONT_7X14, Rgb888::new(255, 255, 255));
     // Header
     let header_text_style = MonoTextStyle::new(&FONT_7X14, Rgb888::new(120, 120, 120));
-    Text::new( "LN  DEST    LV MIN", Point::new(1, LINE_HEIGHT), header_text_style)
+    Text::new( "LN DEST     LV MIN", Point::new(1, LINE_HEIGHT), header_text_style)
         .draw(canvas)
         .unwrap();
 
@@ -416,7 +416,7 @@ pub fn render_arrival_display<D, T>(state: Vec<T>, canvas: &mut D) where D: Draw
         // Draw line text
         Text::new( 
             &get_line_string(message.get_line()),
-            Point::new(5, LINE_HEIGHT_WITH_PADDING * (index as i32 + 2)),
+            Point::new(4, LINE_HEIGHT_WITH_PADDING * (index as i32 + 2)),
             MonoTextStyle::new(&FONT_7X14, message.get_line_color())
         )
             .draw(canvas)
@@ -425,7 +425,7 @@ pub fn render_arrival_display<D, T>(state: Vec<T>, canvas: &mut D) where D: Draw
         // Draw message
         Text::new(
             &message.get_message(),
-            Point::new(29, LINE_HEIGHT_WITH_PADDING * (index as i32 + 2)),
+            Point::new(22, LINE_HEIGHT_WITH_PADDING * (index as i32 + 2)),
             MonoTextStyle::new(&FONT_7X14, message.get_line_color())
         )
             .draw(canvas)
@@ -434,7 +434,7 @@ pub fn render_arrival_display<D, T>(state: Vec<T>, canvas: &mut D) where D: Draw
         // Draw LEAVE - Custom for this sign to indicate when to leave the office to catch this train (15 minutes before)
         Text::new( 
             &message.get_leave(),
-            Point::new(84, LINE_HEIGHT_WITH_PADDING * (index as i32 + 2)),
+            Point::new(85, LINE_HEIGHT_WITH_PADDING * (index as i32 + 2)),
             white_text_style
         )
             .draw(canvas)
