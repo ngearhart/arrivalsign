@@ -1,13 +1,13 @@
-use core::num;
-use std::{cmp::Ordering, collections::HashMap, env, error::Error, fmt::Debug, ops::Deref};
 
-use cached::proc_macro::cached;
+use std::{cmp::Ordering, env, error::Error, fmt::Debug, time::Duration};
+
 use chrono::{DateTime, TimeDelta, Utc};
 use embedded_graphics::{mono_font::{ascii::FONT_7X14, MonoTextStyle}, pixelcolor::Rgb888, prelude::{DrawTarget, Point, Primitive}, primitives::{PrimitiveStyle, Rectangle}, text::Text, Drawable};
-use itertools::{join, Itertools};
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
+use tokio::{spawn, sync::watch::Sender, task::JoinHandle};
 
-use crate::firebase::{ArrivalMessage, ArrivalWidget};
+use crate::firebase::{ArrivalMessage, ArrivalWidget, LoadableWidget};
 
 
 // These structs are a mess to account for what likely is .NET naming convention.
@@ -25,7 +25,7 @@ struct Train {
     #[serde(rename(deserialize = "Destination"))]
     destination: String,
     #[serde(rename(deserialize = "DestinationCode"))]
-    destination_code: String,
+    destination_code: Option<String>,
     #[serde(rename(deserialize = "Group"))]
     group: String,  // Track ID - usually 1 or 2
     #[serde(rename(deserialize = "Line"))]
@@ -57,6 +57,56 @@ pub trait ArrivalDisplayable {
     fn get_leave(&self) -> String;
     fn is_sticky(&self) -> bool;
     fn get_arrival_time(&self) -> String;
+}
+
+#[derive(Clone, Debug)]
+pub struct SimpleArrivalDisplayable {
+    comparison_timestamp: DateTime<Utc>,
+    comparison_timestamp_no_sticky: DateTime<Utc>,
+    message: String,
+    line: Line,
+    line_color: Rgb888,
+    leave: String,
+    is_sticky: bool,
+    arrival_time: String
+}
+
+impl ArrivalDisplayable for SimpleArrivalDisplayable {
+    fn get_comparison_timestamp(&self) -> DateTime<Utc> {
+        self.comparison_timestamp
+    }
+
+    fn get_comparison_timestamp_no_sticky(&self) -> DateTime<Utc> {
+        self.comparison_timestamp_no_sticky
+    }
+
+    fn get_message(&self) -> String {
+        self.message.clone()
+    }
+
+    fn get_line(&self) -> Line {
+        self.line
+    }
+
+    fn get_line_color(&self) -> Rgb888 {
+        self.line_color
+    }
+
+    fn get_leave(&self) -> String {
+        self.leave.clone()
+    }
+
+    fn is_sticky(&self) -> bool {
+        self.is_sticky
+    }
+
+    fn get_arrival_time(&self) -> String {
+        self.arrival_time.clone()
+    }
+
+    fn pretty_print(&self) -> String {
+        format!("{} {}", get_line_string(self.line), self.message)
+    }
 }
 
 impl ArrivalDisplayable for TrainDisplayEntry {
@@ -215,6 +265,12 @@ impl PartialEq for Box<dyn ArrivalDisplayable> {
 
 impl Eq for Box<dyn ArrivalDisplayable> {}
 
+#[derive(Clone, Debug)]
+pub struct ArrivalState {
+    pub messages: Vec<SimpleArrivalDisplayable>,
+    pub last_update: DateTime<Utc>,
+}
+
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub enum Line {
@@ -231,6 +287,7 @@ const API_URL: &str = "https://api.wmata.com/StationPrediction.svc/json/GetPredi
 const API_KEY_HEADER: &str = "api_key";
 const LINE_HEIGHT: i32 = 10;
 const LINE_HEIGHT_WITH_PADDING: i32 = 12;
+const MAX_LINES: usize = 4;
 
 fn get_line_color(line: Line) -> Rgb888 {
     match line {
@@ -256,7 +313,7 @@ fn get_line_string(line: Line) -> String {
     }
 }
 
-pub async fn get_latest_state(arrival_state: ArrivalWidget) -> Result<Vec<Box<dyn ArrivalDisplayable>>, Box<dyn Error>> {
+pub async fn get_latest_state(arrival_state: ArrivalWidget) -> Result<Vec<SimpleArrivalDisplayable>, Box<dyn Error>> {
 
     let mut url = API_URL.to_owned();
     url.push_str(&arrival_state.station_id);
@@ -268,8 +325,23 @@ pub async fn get_latest_state(arrival_state: ArrivalWidget) -> Result<Vec<Box<dy
         .send()
         .await {
             Ok(resp) => {
+                // println!("{}", resp.text().await.as_ref().unwrap());
+                // let api_return = PredictionApiReturn {
+                //     trains: Vec::new()
+                // };
                 let api_return= resp.json::<PredictionApiReturn>().await.expect("Should be deserializable");
-                Ok(convert_api_return_to_display(api_return, arrival_state.messages))
+                let converted = convert_api_return_to_display(api_return, arrival_state.messages);
+                let result: Vec<SimpleArrivalDisplayable> = converted.iter().map(|f| SimpleArrivalDisplayable {
+                    comparison_timestamp: f.get_comparison_timestamp(),
+                    comparison_timestamp_no_sticky: f.get_comparison_timestamp_no_sticky(),
+                    message: f.get_message(),
+                    line: f.get_line(),
+                    line_color: f.get_line_color(),
+                    is_sticky: f.is_sticky(),
+                    leave: f.get_leave(),
+                    arrival_time: f.get_arrival_time()
+                }).collect();
+                Ok(result)
             }
             Err(err) => {
                 println!("Reqwest Error: {}", err);
@@ -302,7 +374,7 @@ fn convert_api_return_to_display(response: PredictionApiReturn, extra_messages: 
         .collect()
 }
 
-pub fn render_arrival_display<D>(state: Vec<Box<dyn ArrivalDisplayable>>, canvas: &mut D) where D: DrawTarget<Color = Rgb888>, <D as DrawTarget>::Error: Debug {
+pub fn render_arrival_display<D, T>(state: Vec<T>, canvas: &mut D) where D: DrawTarget<Color = Rgb888>, <D as DrawTarget>::Error: Debug, T: ArrivalDisplayable {
     let white_text_style = MonoTextStyle::new(&FONT_7X14, Rgb888::new(255, 255, 255));
     // Header
     let header_text_style = MonoTextStyle::new(&FONT_7X14, Rgb888::new(120, 120, 120));
@@ -310,7 +382,7 @@ pub fn render_arrival_display<D>(state: Vec<Box<dyn ArrivalDisplayable>>, canvas
         .draw(canvas)
         .unwrap();
 
-    for (index, message) in state.iter().enumerate() {
+    for (index, message) in state.iter().enumerate().take(MAX_LINES) {
         // Draw left rectangle
         Rectangle::with_corners(
             Point::new(1, LINE_HEIGHT_WITH_PADDING * (index as i32 + 2)),
@@ -348,3 +420,18 @@ pub fn render_arrival_display<D>(state: Vec<Box<dyn ArrivalDisplayable>>, canvas
     }
 }
 
+pub fn spawn_arrival_update_task(state_tx: Sender<ArrivalState>) -> JoinHandle<()> {
+    spawn(async move {
+        loop {
+            println!("Loading new state...");
+            let arrival_displayables = get_latest_state(ArrivalWidget::load().await).await.unwrap();
+            let new_state = ArrivalState {
+                messages: arrival_displayables,
+                last_update: Utc::now(),
+            };
+            println!("New state loaded. Sending...");
+            state_tx.send(new_state).unwrap();
+            tokio::time::sleep(Duration::from_millis(5000)).await;
+        }
+    })
+}

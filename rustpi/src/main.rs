@@ -4,10 +4,12 @@ compile_error!("feature \"rpi\" and feature \"simulator\" cannot be enabled at t
 mod firebase;
 mod widgets;
 
+use chrono::Utc;
 use dotenv::dotenv;
 use firebase::{AlertWidget, ArrivalWidget, LoadableWidget};
-use widgets::arrival::{get_latest_state, render_arrival_display, ArrivalDisplayable, TrainDisplayEntry};
-use std::{ops::Deref, thread, time::Duration};
+use tokio::{select, spawn, sync::{mpsc, oneshot, watch, Mutex}, time::interval};
+use widgets::arrival::{get_latest_state, render_arrival_display, spawn_arrival_update_task, ArrivalDisplayable, ArrivalState, SimpleArrivalDisplayable, TrainDisplayEntry};
+use std::{io::Read, ops::Deref, sync::{Arc, LazyLock, RwLock}, thread, time::Duration};
 
 use embedded_graphics::{
     mono_font::{ascii::FONT_4X6, MonoTextStyle},
@@ -129,21 +131,57 @@ async fn main() {
     // println!("{}", b.get_messages().join(", "));
     // println!("{}", b.alerts.iter().cloned().map(|alert| alert.message).join(", "));
 
-    let state = get_latest_state(a).await.unwrap();
-    println!("{}", join(state.iter().map(|item| {
-       item.pretty_print()
-    }), "\n"));
+    // let state = get_latest_state(a).await.unwrap();
+    // println!("{}", join(state.iter().map(|item| {
+    //    item.pretty_print()
+    // }), "\n"));
 
-    render_arrival_display(state, &mut canvas);
+    // let (tx, mut rx) = mpsc::channel(32);
+    let (tx, mut rx) = watch::channel(ArrivalState { messages: Vec::new(), last_update: Utc::now() });
+    spawn_arrival_update_task(tx);
+
+
+    let mut interval = interval(Duration::from_millis(100));
+
 
     'running: loop {
 
+        let mut messages: Vec<SimpleArrivalDisplayable> = Vec::new();
+
+        let res = rx.has_changed();
+        if res.is_ok() {
+            messages = rx.borrow_and_update().messages.clone();
+        }
+
+        canvas.clear(Rgb888::BLACK).unwrap();
+        render_arrival_display(messages, &mut canvas);
         window.update(&canvas);
 
         if window.events().any(|e| e == SimulatorEvent::Quit) {
             break 'running;
         }
 
-        tokio::time::sleep(Duration::from_millis(250)).await;
+        // tokio::select! {
+        //     _ = interval.tick() => {
+        //         
+        //     },
+        //     msg = &mut rx => {
+        //         println!("State updated");
+        //         if msg.is_ok() {
+        //             messages = msg.messages;
+        //         }
+        //         break;
+        //     }
+        // }
+
+        // match rx.recv().await {
+        //     Some(msg) => {
+        //     },
+        //     None => ()
+        // }
+
+    
+        // interval.tick().await;
+        tokio::time::sleep(Duration::from_millis(100)).await;
     }
 }
