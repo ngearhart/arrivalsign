@@ -469,7 +469,6 @@ pub fn render_arrival_display<D, T>(state: Vec<T>, canvas: &mut D) where D: Draw
 pub fn spawn_arrival_update_task(state_tx: Sender<ArrivalState>) -> JoinHandle<()> {
     spawn(async move {
         loop {
-            tokio::time::sleep(Duration::from_millis(5000)).await;
             debug!(target: "arrival_state_update", "Loading new state...");
             let arrival_displayables = get_latest_state(ArrivalWidget::load().await).await.unwrap();
             let new_state = ArrivalState {
@@ -478,7 +477,7 @@ pub fn spawn_arrival_update_task(state_tx: Sender<ArrivalState>) -> JoinHandle<(
             };
             debug!(target: "arrival_state_update", "New state loaded. Sending to main thread.");
             state_tx.send(new_state).unwrap();
-            tokio::time::sleep(Duration::from_millis(5000)).await;
+            tokio::time::sleep(Duration::from_secs(15)).await;
         }
     })
 }
