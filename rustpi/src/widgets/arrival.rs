@@ -9,7 +9,7 @@ use serde_json::{from_str, Deserializer};
 use tokio::{spawn, sync::watch::Sender, task::JoinHandle};
 
 use crate::firebase::{ArrivalMessage, ArrivalWidget, LoadableWidget};
-use log::debug;
+use log::{debug, info};
 
 // These structs are a mess to account for what likely is .NET naming convention.
 
@@ -475,7 +475,7 @@ pub fn spawn_arrival_update_task(state_tx: Sender<ArrivalState>) -> JoinHandle<(
                 messages: arrival_displayables,
                 last_update: Utc::now(),
             };
-            debug!(target: "arrival_state_update", "New state loaded. Sending to main thread.");
+            info!(target: "arrival_state_update", "New state loaded. Sending to main thread.");
             state_tx.send(new_state).unwrap();
             tokio::time::sleep(Duration::from_secs(15)).await;
         }

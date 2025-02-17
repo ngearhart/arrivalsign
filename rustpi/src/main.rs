@@ -9,7 +9,7 @@ use dotenv::dotenv;
 use env_logger::Builder;
 use firebase::{AlertWidget, ArrivalWidget, LoadableWidget};
 use tokio::{select, spawn, sync::{mpsc, oneshot, watch, Mutex}, time::interval};
-use widgets::arrival::{get_latest_state, render_arrival_display, spawn_arrival_update_task, ArrivalDisplayable, ArrivalState, Line, SimpleArrivalDisplayable, TrainDisplayEntry};
+use widgets::{alerts::{spawn_alert_update_task, AlertState}, arrival::{get_latest_state, render_arrival_display, spawn_arrival_update_task, ArrivalDisplayable, ArrivalState, Line, SimpleArrivalDisplayable, TrainDisplayEntry}};
 use std::{io::Read, ops::Deref, sync::{Arc, LazyLock, RwLock}, thread, time::Duration};
 
 use embedded_graphics::{
@@ -142,19 +142,21 @@ async fn main() {
     // let (tx, mut rx) = mpsc::channel(32);
     let mut loading_message: Vec<SimpleArrivalDisplayable> = Vec::new();
     loading_message.push(SimpleArrivalDisplayable::loading());
-    let (tx, mut rx) = watch::channel(ArrivalState { messages: loading_message, last_update: Utc::now() });
-    spawn_arrival_update_task(tx);
+    let (arrival_tx, mut arrival_rx) = watch::channel(ArrivalState { messages: loading_message, last_update: Utc::now() });
+    spawn_arrival_update_task(arrival_tx);
+    
+    let (alert_tx, mut alert_rx) = watch::channel(AlertState { alerts: Vec::new() });
+    spawn_alert_update_task(alert_tx);
 
-
-    let mut interval = interval(Duration::from_millis(100));
+    // let mut interval = interval(Duration::from_millis(100));
 
 
     'running: loop {
         let mut messages: Vec<SimpleArrivalDisplayable> = Vec::new();
 
-        let res = rx.has_changed();
+        let res = arrival_rx.has_changed();
         if res.is_ok() {
-            messages = rx.borrow_and_update().messages.clone();
+            messages = arrival_rx.borrow_and_update().messages.clone();
         }
 
         canvas.clear(Rgb888::BLACK).unwrap();

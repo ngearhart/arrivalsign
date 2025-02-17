@@ -1269,6 +1269,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "metrosign"
+version = "1.0.0"
+dependencies = [
+ "cached",
+ "chrono",
+ "dotenv",
+ "embedded-graphics",
+ "embedded-graphics-simulator",
+ "env_logger",
+ "firebase-rs",
+ "futures",
+ "itertools 0.14.0",
+ "log",
+ "reqwest 0.12.12",
+ "retry",
+ "rpi-led-panel",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "micromath"
 version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1831,28 +1853,6 @@ dependencies = [
  "ring 0.17.8",
  "rustls-pki-types",
  "untrusted 0.9.0",
-]
-
-[[package]]
-name = "rustpi"
-version = "0.1.0"
-dependencies = [
- "cached",
- "chrono",
- "dotenv",
- "embedded-graphics",
- "embedded-graphics-simulator",
- "env_logger",
- "firebase-rs",
- "futures",
- "itertools 0.14.0",
- "log",
- "reqwest 0.12.12",
- "retry",
- "rpi-led-panel",
- "serde",
- "serde_json",
- "tokio",
 ]
 
 [[package]]

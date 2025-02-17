@@ -1,6 +1,6 @@
 [package]
-name = "rustpi"
-version = "0.1.0"
+name = "metrosign"
+version = "1.0.0"
 edition = "2021"
 
 [features]
