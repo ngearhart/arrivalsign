@@ -11,6 +11,8 @@ use tokio::{spawn, sync::watch::Sender, task::JoinHandle};
 use crate::firebase::{ArrivalMessage, ArrivalWidget, LoadableWidget};
 use log::{debug, info};
 
+use super::{LINE_HEIGHT, LINE_HEIGHT_WITH_PADDING, MAX_LINES};
+
 // These structs are a mess to account for what likely is .NET naming convention.
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -308,9 +310,7 @@ pub enum Line {
 
 const API_URL: &str = "https://api.wmata.com/StationPrediction.svc/json/GetPrediction/";
 const API_KEY_HEADER: &str = "api_key";
-const LINE_HEIGHT: i32 = 10;
-const LINE_HEIGHT_WITH_PADDING: i32 = 12;
-const MAX_LINES: usize = 4;
+
 
 fn get_line_color(line: Line) -> Rgb888 {
     match line {

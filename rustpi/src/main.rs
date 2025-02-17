@@ -8,8 +8,9 @@ use chrono::Utc;
 use dotenv::dotenv;
 use env_logger::Builder;
 use firebase::{AlertWidget, ArrivalWidget, LoadableWidget};
+use log::debug;
 use tokio::{select, spawn, sync::{mpsc, oneshot, watch, Mutex}, time::interval};
-use widgets::{alerts::{spawn_alert_update_task, AlertState}, arrival::{get_latest_state, render_arrival_display, spawn_arrival_update_task, ArrivalDisplayable, ArrivalState, Line, SimpleArrivalDisplayable, TrainDisplayEntry}};
+use widgets::{alerts::{render_alert_display, spawn_alert_update_task, AlertMode, AlertState}, arrival::{get_latest_state, render_arrival_display, spawn_arrival_update_task, ArrivalDisplayable, ArrivalState, Line, SimpleArrivalDisplayable, TrainDisplayEntry}};
 use std::{io::Read, ops::Deref, sync::{Arc, LazyLock, RwLock}, thread, time::Duration};
 
 use embedded_graphics::{
@@ -30,9 +31,6 @@ use rpi_led_matrix::{args, LedMatrix};
 #[cfg(feature = "simulator")]
 use embedded_graphics_simulator::SimulatorDisplay;
 
-const WIDTH: u32 = 64 * 2;
-const HEIGHT: u32 = 32 * 2;
-
 // Change depending on your monitor resolution.
 #[cfg(feature = "simulator")]
 const WINDOW_SCALING: u32 = 8;
@@ -44,7 +42,9 @@ fn get_canvas() {
 
 #[cfg(feature = "simulator")]
 fn get_canvas() -> SimulatorDisplay<Rgb888> {
-    return SimulatorDisplay::<Rgb888>::new(Size::new(WIDTH, HEIGHT));
+    use widgets::{SCREEN_HEIGHT, SCREEN_WIDTH};
+
+    return SimulatorDisplay::<Rgb888>::new(Size::new(SCREEN_WIDTH, SCREEN_HEIGHT));
 }
 
 
@@ -145,7 +145,7 @@ async fn main() {
     let (arrival_tx, mut arrival_rx) = watch::channel(ArrivalState { messages: loading_message, last_update: Utc::now() });
     spawn_arrival_update_task(arrival_tx);
     
-    let (alert_tx, mut alert_rx) = watch::channel(AlertState { alerts: Vec::new() });
+    let (alert_tx, mut alert_rx) = watch::channel(AlertState::blank());
     spawn_alert_update_task(alert_tx);
 
     // let mut interval = interval(Duration::from_millis(100));
@@ -153,14 +153,26 @@ async fn main() {
 
     'running: loop {
         let mut messages: Vec<SimpleArrivalDisplayable> = Vec::new();
+        let mut alert_state: AlertState = AlertState::blank();
 
-        let res = arrival_rx.has_changed();
-        if res.is_ok() {
+        let arrival_res = arrival_rx.has_changed();
+        if arrival_res.is_ok() {
             messages = arrival_rx.borrow_and_update().messages.clone();
         }
 
+        let alert_res = alert_rx.has_changed();
+        if alert_res.is_ok() {
+            alert_state = alert_rx.borrow_and_update().clone();
+        }
+
         canvas.clear(Rgb888::BLACK).unwrap();
-        render_arrival_display(messages, &mut canvas);
+
+        if alert_state.mode != AlertMode::Hidden {
+            render_alert_display(alert_state, &mut canvas);
+        } else {
+            render_arrival_display(messages, &mut canvas);
+        }
+
         window.update(&canvas);
 
         if window.events().any(|e| e == SimulatorEvent::Quit) {
