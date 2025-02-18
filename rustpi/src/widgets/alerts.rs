@@ -1,7 +1,7 @@
 use std::{fmt::Debug, time::Duration};
 
-use embedded_graphics::{mono_font::{ascii::{FONT_5X7, FONT_7X14}, MonoTextStyle}, pixelcolor::Rgb888, prelude::{DrawTarget, Point, Primitive, RgbColor, Size}, primitives::{PrimitiveStyle, Rectangle}, text::Text};
-use embedded_text::{alignment::HorizontalAlignment, style::{HeightMode, TextBoxStyleBuilder}, TextBox};
+use embedded_graphics::{mono_font::{ascii::{FONT_5X7, FONT_6X10, FONT_7X13_BOLD, FONT_7X14, FONT_7X14_BOLD}, MonoTextStyle}, pixelcolor::Rgb888, prelude::{Dimensions, DrawTarget, PixelColor, Point, Primitive, RgbColor, Size}, primitives::{PrimitiveStyle, Rectangle}, text::{renderer::{CharacterStyle, TextRenderer}, Text}};
+use embedded_text::{alignment::HorizontalAlignment, plugin::PluginMarker, style::{HeightMode, TextBoxStyleBuilder}, TextBox};
 use log::{debug, info};
 use tokio::{spawn, sync::watch::Sender, task::JoinHandle};
 use rand::seq::IteratorRandom;
@@ -24,14 +24,16 @@ pub enum AlertMode {
 #[derive(Clone, Debug)]
 pub struct AlertState {
     pub mode: AlertMode,
-    pub currently_shown_message: String
+    pub currently_shown_message: String,
+    scroll_index: u32
 }
 
 impl AlertState {
     pub fn blank() -> Self {
         AlertState {
             mode: AlertMode::Hidden,
-            currently_shown_message: String::from("")
+            currently_shown_message: String::from(""),
+            scroll_index: 0
         }
     }
 }
@@ -39,6 +41,7 @@ impl AlertState {
 pub fn spawn_alert_update_task(state_tx: Sender<AlertState>) -> JoinHandle<()> {
     spawn(async move {
         loop {
+            tokio::time::sleep(Duration::from_secs(10)).await;
             debug!(target: "alert_state_update", "Loading new state...");
 
             let new_state = AlertWidget::load().await;
@@ -46,19 +49,23 @@ pub fn spawn_alert_update_task(state_tx: Sender<AlertState>) -> JoinHandle<()> {
             info!(target: "alert_state_update", "New state loaded. Sending to main thread.");
             let intro_a = AlertState {
                 mode: AlertMode::IntroA,
-                currently_shown_message: new_state.alerts.iter().choose(&mut rand::rng()).unwrap().message.to_string()
+                currently_shown_message: new_state.alerts.iter().choose(&mut rand::rng()).unwrap().message.to_string(),
+                scroll_index: 0
             };
             let intro_b = AlertState {
                 mode: AlertMode::IntroB,
-                currently_shown_message: intro_a.currently_shown_message.clone()
+                currently_shown_message: intro_a.currently_shown_message.clone(),
+                scroll_index: 0
             };
-            let message_a = AlertState {
+            let mut message_a = AlertState {
                 mode: AlertMode::MessageA,
-                currently_shown_message: intro_a.currently_shown_message.clone()
+                currently_shown_message: intro_a.currently_shown_message.clone(),
+                scroll_index: 0
             };
-            let message_b = AlertState {
+            let mut message_b = AlertState {
                 mode: AlertMode::MessageB,
-                currently_shown_message: intro_a.currently_shown_message.clone()
+                currently_shown_message: intro_a.currently_shown_message.clone(),
+                scroll_index: 0
             };
             if new_state.alerts.len() > 0 {
                 // Show intro
@@ -70,11 +77,21 @@ pub fn spawn_alert_update_task(state_tx: Sender<AlertState>) -> JoinHandle<()> {
                 }
 
                 // Show real message
-                for _ in 1..4 {
+                for i in 0..3 {
+                    message_a.scroll_index = i * 4;
+                    message_b.scroll_index = i * 4;
                     state_tx.send(message_a.clone()).unwrap();
-                    tokio::time::sleep(Duration::from_secs(2)).await;
+                    tokio::time::sleep(Duration::from_millis(1000)).await;
+                    message_a.scroll_index = i * 4 + 1;
+                    message_b.scroll_index = i * 4 + 1;
+                    tokio::time::sleep(Duration::from_millis(1000)).await;
                     state_tx.send(message_b.clone()).unwrap();
-                    tokio::time::sleep(Duration::from_secs(2)).await;
+                    message_a.scroll_index = i * 4 + 2;
+                    message_b.scroll_index = i * 4 + 2;
+                    tokio::time::sleep(Duration::from_millis(1000)).await;
+                    message_a.scroll_index = i * 4 + 3;
+                    message_b.scroll_index = i * 4 + 3;
+                    tokio::time::sleep(Duration::from_millis(1000)).await;
                 }
             }
             state_tx.send(AlertState::blank()).unwrap();
@@ -87,7 +104,7 @@ pub fn spawn_alert_update_task(state_tx: Sender<AlertState>) -> JoinHandle<()> {
 pub fn render_alert_display<D>(state: AlertState, canvas: &mut D) where D: DrawTarget<Color = Rgb888>, <D as DrawTarget>::Error: Debug {
     let border_rect_style = PrimitiveStyle::with_fill(Rgb888::YELLOW);
     let invisible_style = PrimitiveStyle::with_fill(Rgb888::BLACK);
-    let RECT_WIDTH: i32 = 5;
+    const RECT_WIDTH: i32 = 5;
 
     for i in 0..(SCREEN_WIDTH as i32 / RECT_WIDTH / 2 + 1) {
         // Top row
@@ -121,23 +138,40 @@ pub fn render_alert_display<D>(state: AlertState, canvas: &mut D) where D: DrawT
             .draw(canvas).unwrap();
     }
 
-    let big_text_style = MonoTextStyle::new(&FONT_7X14, Rgb888::new(255, 255, 255));
-    let small_text_style = MonoTextStyle::new(&FONT_5X7, Rgb888::new(255, 255, 255));
-    let textbox_style = TextBoxStyleBuilder::new()
+    let big_text_style = MonoTextStyle::new(&FONT_7X14_BOLD, Rgb888::new(255, 255, 255));
+    let small_text_style = MonoTextStyle::new(&FONT_6X10, Rgb888::new(255, 255, 255));
+    let centered_textbox_style = TextBoxStyleBuilder::new()
         .height_mode(HeightMode::Exact(embedded_text::style::VerticalOverdraw::Visible))
         .vertical_alignment(embedded_text::alignment::VerticalAlignment::Middle)
         .alignment(HorizontalAlignment::Center)
         .paragraph_spacing(6)
         .build();
-    let bounds = Rectangle::new(Point::zero(), Size::new(SCREEN_WIDTH, SCREEN_HEIGHT));
+    let top_aligned_textbox_style = TextBoxStyleBuilder::new()
+        .height_mode(HeightMode::Exact(embedded_text::style::VerticalOverdraw::FullRowsOnly))
+        .vertical_alignment(embedded_text::alignment::VerticalAlignment::Top)
+        .alignment(HorizontalAlignment::Center)
+        .paragraph_spacing(6)
+        .build();
+    let bounds = Rectangle::with_corners(
+        Point::new(0, RECT_WIDTH),
+        Point::new(SCREEN_WIDTH as i32, SCREEN_HEIGHT as i32 - RECT_WIDTH)
+    );
 
     if state.mode == AlertMode::IntroA || state.mode == AlertMode::IntroB {
-        TextBox::with_textbox_style("Metro Alert", bounds, big_text_style, textbox_style)
+        TextBox::with_textbox_style("Metro Alert", bounds, big_text_style, centered_textbox_style)
             .draw(canvas)
             .unwrap();
     } else if state.mode == AlertMode::MessageA || state.mode == AlertMode::MessageB {
-        TextBox::with_textbox_style(&state.currently_shown_message, bounds, small_text_style, textbox_style)
-            .draw(canvas)
-            .unwrap();
+        let height = centered_textbox_style.measure_text_height(&small_text_style, &state.currently_shown_message, bounds.size.width);
+        if height > bounds.size.height {
+            TextBox::with_textbox_style(&state.currently_shown_message, bounds, small_text_style, top_aligned_textbox_style)
+                .set_vertical_offset(-2 * state.scroll_index as i32) // Magic number: line height
+                .draw(canvas)
+                .unwrap();
+        } else {
+            TextBox::with_textbox_style(&state.currently_shown_message, bounds, small_text_style, centered_textbox_style)
+                .draw(canvas)
+                .unwrap();
+        }
     }
 }

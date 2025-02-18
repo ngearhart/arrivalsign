@@ -2,7 +2,7 @@
 use std::{cmp::Ordering, env, error::Error, fmt::Debug, time::Duration};
 
 use chrono::{DateTime, TimeDelta, Utc};
-use embedded_graphics::{mono_font::{ascii::FONT_7X14, MonoTextStyle}, pixelcolor::Rgb888, prelude::{DrawTarget, Point, Primitive}, primitives::{PrimitiveStyle, Rectangle}, text::Text, Drawable};
+use embedded_graphics::{mono_font::{ascii::FONT_7X14, MonoTextStyle}, pixelcolor::Rgb888, prelude::{DrawTarget, Point, Primitive, WebColors}, primitives::{PrimitiveStyle, Rectangle}, text::Text, Drawable};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use serde_json::{from_str, Deserializer};
@@ -11,7 +11,7 @@ use tokio::{spawn, sync::watch::Sender, task::JoinHandle};
 use crate::firebase::{ArrivalMessage, ArrivalWidget, LoadableWidget};
 use log::{debug, info};
 
-use super::{LINE_HEIGHT, LINE_HEIGHT_WITH_PADDING, MAX_LINES};
+use super::{LINE_HEIGHT, LINE_HEIGHT_WITH_PADDING, MAX_LINES, SCREEN_WIDTH};
 
 // These structs are a mess to account for what likely is .NET naming convention.
 
@@ -418,6 +418,14 @@ pub fn render_arrival_display<D, T>(state: Vec<T>, canvas: &mut D) where D: Draw
     Text::new( "LN DEST     LV MIN", Point::new(1, LINE_HEIGHT), header_text_style)
         .draw(canvas)
         .unwrap();
+
+    // Line below header
+    Rectangle::with_corners(
+        Point::new(0, LINE_HEIGHT_WITH_PADDING),
+        Point::new(SCREEN_WIDTH as i32, LINE_HEIGHT_WITH_PADDING)
+    )
+        .into_styled(PrimitiveStyle::with_fill(Rgb888::new(40, 40, 40)))
+        .draw(canvas).unwrap();
 
     for (index, message) in state.iter().enumerate().take(MAX_LINES) {
         // Draw left rectangle
