@@ -3,7 +3,7 @@
 use embedded_graphics::prelude::RgbColor;
 #[cfg(feature = "rpi")]
 use rpi_led_panel::{RGBMatrixConfig, RGBMatrix, Canvas};
-#[cfg(feature = "rpi")]
+
 use std::fmt::Debug;
 
 #[cfg(feature = "simulator")]
@@ -70,7 +70,7 @@ pub struct ScreenManager {
 }
 
 #[cfg(feature = "simulator")]
-impl DrawableScreen for ScreenManager {
+impl DrawableScreen<SimulatorDisplay<Rgb888>> for ScreenManager {
 
     fn clear(&mut self) {
         self.canvas.clear(Rgb888::BLACK).unwrap();
@@ -88,5 +88,9 @@ impl DrawableScreen for ScreenManager {
             canvas: SimulatorDisplay::<Rgb888>::new(Size::new(SCREEN_WIDTH, SCREEN_HEIGHT)),
             window: Window::new("Metro Sign Simulator", &output_settings)
         }
+    }
+
+    fn get_canvas(&mut self) -> &mut SimulatorDisplay<Rgb888> {
+        &mut self.canvas
     }
 }
