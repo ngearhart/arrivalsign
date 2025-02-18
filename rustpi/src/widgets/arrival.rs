@@ -1,11 +1,17 @@
-
 use std::{cmp::Ordering, env, error::Error, fmt::Debug, time::Duration};
 
 use chrono::{DateTime, TimeDelta, Utc};
-use embedded_graphics::{mono_font::{ascii::FONT_7X14, MonoTextStyle}, pixelcolor::Rgb888, prelude::{DrawTarget, Point, Primitive, WebColors}, primitives::{PrimitiveStyle, Rectangle}, text::Text, Drawable};
+use embedded_graphics::{
+    mono_font::{ascii::FONT_7X14, MonoTextStyle},
+    pixelcolor::Rgb888,
+    prelude::{DrawTarget, Point, Primitive},
+    primitives::{PrimitiveStyle, Rectangle},
+    text::Text,
+    Drawable,
+};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-use serde_json::{from_str, Deserializer};
+use serde_json::from_str;
 use tokio::{spawn, sync::watch::Sender, task::JoinHandle};
 
 use crate::firebase::{ArrivalMessage, ArrivalWidget, LoadableWidget};
@@ -18,7 +24,7 @@ use super::{LINE_HEIGHT, LINE_HEIGHT_WITH_PADDING, MAX_LINES, SCREEN_WIDTH};
 #[derive(Serialize, Deserialize, Debug)]
 struct PredictionApiReturn {
     #[serde(rename(deserialize = "Trains"))]
-    trains: Vec<Train>
+    trains: Vec<Train>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -30,7 +36,7 @@ struct Train {
     #[serde(rename(deserialize = "DestinationCode"))]
     destination_code: Option<String>,
     #[serde(rename(deserialize = "Group"))]
-    group: String,  // Track ID - usually 1 or 2
+    group: String, // Track ID - usually 1 or 2
     #[serde(rename(deserialize = "Line"))]
     line: String,
     #[serde(rename(deserialize = "LocationCode"))]
@@ -38,7 +44,7 @@ struct Train {
     #[serde(rename(deserialize = "LocationName"))]
     location_name: String,
     #[serde(rename(deserialize = "Min"))]
-    min: String
+    min: String,
 }
 
 impl Train {
@@ -52,8 +58,8 @@ pub struct TrainDisplayEntry {
     line: Line,
     line_color: Rgb888,
     destination: String,
-    arrival: String,  // Can be in minutes or ARR, BRD
-    arrival_timestamp: DateTime<Utc> 
+    arrival: String, // Can be in minutes or ARR, BRD
+    arrival_timestamp: DateTime<Utc>,
 }
 
 pub trait ArrivalDisplayable {
@@ -77,7 +83,7 @@ pub struct SimpleArrivalDisplayable {
     line_color: Rgb888,
     leave: String,
     is_sticky: bool,
-    arrival_time: String
+    arrival_time: String,
 }
 
 impl SimpleArrivalDisplayable {
@@ -90,7 +96,7 @@ impl SimpleArrivalDisplayable {
             line_color: Rgb888::new(50, 50, 50),
             leave: String::from(""),
             is_sticky: true,
-            arrival_time: String::from("")
+            arrival_time: String::from(""),
         }
     }
 }
@@ -147,19 +153,24 @@ impl ArrivalDisplayable for TrainDisplayEntry {
     }
 
     fn pretty_print(&self) -> String {
-        format!("{} {} {}", get_line_string(self.line), self.destination, self.arrival)
+        format!(
+            "{} {} {}",
+            get_line_string(self.line),
+            self.destination,
+            self.arrival
+        )
     }
-    
+
     fn get_comparison_timestamp(&self) -> DateTime<Utc> {
         match self.arrival.parse::<i64>() {
-            Ok(_) => self.arrival_timestamp,  // Use the arrival timestamp by default
+            Ok(_) => self.arrival_timestamp, // Use the arrival timestamp by default
             Err(_) => {
                 if self.arrival == "ARR" {
                     return Utc::now() - TimeDelta::seconds(60); // If ARR, sort as if it arrived 1 minute ago
                 } else if self.arrival == "BRD" {
                     return Utc::now() - TimeDelta::seconds(120); // If BRD, sort as if it arrived 2 minutes ago
                 }
-                return Utc::now() + TimeDelta::days(1);  // If something else, put it far below
+                return Utc::now() + TimeDelta::days(1); // If something else, put it far below
             }
         }
     }
@@ -174,8 +185,16 @@ impl ArrivalDisplayable for TrainDisplayEntry {
 
     fn get_leave(&self) -> String {
         match self.arrival.parse::<i64>() {
-            Ok(_) => if self.arrival_timestamp - TimeDelta::minutes(15) > Utc::now() { (self.arrival_timestamp - TimeDelta::minutes(15) - Utc::now()).num_minutes().to_string() } else { "- ".to_string() },
-            Err(_) => "- ".to_string()
+            Ok(_) => {
+                if self.arrival_timestamp - TimeDelta::minutes(15) > Utc::now() {
+                    (self.arrival_timestamp - TimeDelta::minutes(15) - Utc::now())
+                        .num_minutes()
+                        .to_string()
+                } else {
+                    "- ".to_string()
+                }
+            }
+            Err(_) => "- ".to_string(),
         }
     }
 
@@ -198,17 +217,24 @@ impl ArrivalDisplayable for ArrivalMessage {
     }
 
     fn pretty_print(&self) -> String {
-        format!("{} {} {}", get_line_string(self.get_line()), self.message, (self.get_comparison_timestamp() - Utc::now()).num_minutes())
+        format!(
+            "{} {} {}",
+            get_line_string(self.get_line()),
+            self.message,
+            (self.get_comparison_timestamp() - Utc::now()).num_minutes()
+        )
     }
-    
+
     fn get_comparison_timestamp_no_sticky(&self) -> DateTime<Utc> {
-        DateTime::from_timestamp_millis(self.time).expect("Invalid timestamp on custom arrival message")
+        DateTime::from_timestamp_millis(self.time)
+            .expect("Invalid timestamp on custom arrival message")
     }
 
     fn get_comparison_timestamp(&self) -> DateTime<Utc> {
         match self.sticky {
-            true => DateTime::from_timestamp(0, 0).unwrap(),  // Put sticky messages on top
-            false => DateTime::from_timestamp_millis(self.time).expect("Invalid timestamp on custom arrival message")
+            true => DateTime::from_timestamp(0, 0).unwrap(), // Put sticky messages on top
+            false => DateTime::from_timestamp_millis(self.time)
+                .expect("Invalid timestamp on custom arrival message"),
         }
     }
 
@@ -218,26 +244,36 @@ impl ArrivalDisplayable for ArrivalMessage {
 
     fn get_leave(&self) -> String {
         if self.get_comparison_timestamp() - TimeDelta::minutes(15) > Utc::now() {
-            (Utc::now() - self.get_comparison_timestamp() - TimeDelta::minutes(15)).num_minutes().to_string()
+            (Utc::now() - self.get_comparison_timestamp() - TimeDelta::minutes(15))
+                .num_minutes()
+                .to_string()
         } else {
-            "- ".to_string() 
+            "- ".to_string()
         }
     }
 
     fn get_arrival_time(&self) -> String {
-        (DateTime::from_timestamp_millis(self.time).expect("Invalid timestamp on custom arrival message") - Utc::now()).num_minutes().to_string()
+        (DateTime::from_timestamp_millis(self.time)
+            .expect("Invalid timestamp on custom arrival message")
+            - Utc::now())
+        .num_minutes()
+        .to_string()
     }
 }
 
 impl Ord for TrainDisplayEntry {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.get_comparison_timestamp().cmp(&other.get_comparison_timestamp())
+        self.get_comparison_timestamp()
+            .cmp(&other.get_comparison_timestamp())
     }
 }
 
 impl PartialOrd for TrainDisplayEntry {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.get_comparison_timestamp().cmp(&other.get_comparison_timestamp()))
+        Some(
+            self.get_comparison_timestamp()
+                .cmp(&other.get_comparison_timestamp()),
+        )
     }
 }
 
@@ -251,13 +287,17 @@ impl Eq for TrainDisplayEntry {}
 
 impl Ord for ArrivalMessage {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.get_comparison_timestamp().cmp(&other.get_comparison_timestamp())
+        self.get_comparison_timestamp()
+            .cmp(&other.get_comparison_timestamp())
     }
 }
 
 impl PartialOrd for ArrivalMessage {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.get_comparison_timestamp().cmp(&other.get_comparison_timestamp()))
+        Some(
+            self.get_comparison_timestamp()
+                .cmp(&other.get_comparison_timestamp()),
+        )
     }
 }
 
@@ -271,13 +311,17 @@ impl Eq for ArrivalMessage {}
 
 impl Ord for Box<dyn ArrivalDisplayable> {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.get_comparison_timestamp().cmp(&other.get_comparison_timestamp())
+        self.get_comparison_timestamp()
+            .cmp(&other.get_comparison_timestamp())
     }
 }
 
 impl PartialOrd for Box<dyn ArrivalDisplayable> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.get_comparison_timestamp().cmp(&other.get_comparison_timestamp()))
+        Some(
+            self.get_comparison_timestamp()
+                .cmp(&other.get_comparison_timestamp()),
+        )
     }
 }
 
@@ -295,22 +339,20 @@ pub struct ArrivalState {
     pub last_update: DateTime<Utc>,
 }
 
-
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub enum Line {
-   RD,
-   OR,
-   SV,
-   YL,
-   GR,
-   BL,
-   TS,
-   UNKNOWN,
+    RD,
+    OR,
+    SV,
+    YL,
+    GR,
+    BL,
+    TS,
+    UNKNOWN,
 }
 
 const API_URL: &str = "https://api.wmata.com/StationPrediction.svc/json/GetPrediction/";
 const API_KEY_HEADER: &str = "api_key";
-
 
 fn get_line_color(line: Line) -> Rgb888 {
     match line {
@@ -321,7 +363,7 @@ fn get_line_color(line: Line) -> Rgb888 {
         Line::BL => Rgb888::new(0, 0, 255),
         Line::TS => Rgb888::new(0, 51, 160),
         Line::SV => Rgb888::new(170, 170, 170),
-        _ => Rgb888::new(110, 110, 110)
+        _ => Rgb888::new(110, 110, 110),
     }
 }
 
@@ -334,7 +376,7 @@ fn get_line_string(line: Line) -> String {
         Line::BL => String::from("BL"),
         Line::TS => String::from("TS"),
         Line::SV => String::from("SV"),
-        Line::UNKNOWN => String::from("??")
+        Line::UNKNOWN => String::from("??"),
     }
 }
 
@@ -347,28 +389,33 @@ fn get_string_line(line: &str) -> Line {
         "BL" => Line::BL,
         "TS" => Line::TS,
         "SV" => Line::SV,
-        _ => Line::UNKNOWN
+        _ => Line::UNKNOWN,
     }
 }
 
-pub async fn get_latest_state(arrival_state: ArrivalWidget) -> Result<Vec<SimpleArrivalDisplayable>, Box<dyn Error>> {
-
+pub async fn get_latest_state(
+    arrival_state: ArrivalWidget,
+) -> Result<Vec<SimpleArrivalDisplayable>, Box<dyn Error>> {
     let mut url = API_URL.to_owned();
     url.push_str(&arrival_state.station_id);
 
     let client = reqwest::Client::new();
 
-    match client.get(url)
+    match client
+        .get(url)
         .header(API_KEY_HEADER, env::var("WMATA_API_KEY").unwrap())
         .send()
-        .await {
-            Ok(resp) => {
-                let raw = resp.bytes().await.expect("API did not respond");
-                let raw_string = String::from_utf8(raw.to_vec()).expect("Response has invalid UTF-8");
-                debug!(target: "arrival_state_update", "{}", raw_string);
-                let api_return= from_str(&raw_string).expect("Could not deserialize to JSON");
-                let converted = convert_api_return_to_display(api_return, arrival_state.messages);
-                let result: Vec<SimpleArrivalDisplayable> = converted.iter().map(|f| SimpleArrivalDisplayable {
+        .await
+    {
+        Ok(resp) => {
+            let raw = resp.bytes().await.expect("API did not respond");
+            let raw_string = String::from_utf8(raw.to_vec()).expect("Response has invalid UTF-8");
+            debug!(target: "arrival_state_update", "{}", raw_string);
+            let api_return = from_str(&raw_string).expect("Could not deserialize to JSON");
+            let converted = convert_api_return_to_display(api_return, arrival_state.messages);
+            let result: Vec<SimpleArrivalDisplayable> = converted
+                .iter()
+                .map(|f| SimpleArrivalDisplayable {
                     comparison_timestamp: f.get_comparison_timestamp(),
                     comparison_timestamp_no_sticky: f.get_comparison_timestamp_no_sticky(),
                     message: f.get_message(),
@@ -376,34 +423,52 @@ pub async fn get_latest_state(arrival_state: ArrivalWidget) -> Result<Vec<Simple
                     line_color: f.get_line_color(),
                     is_sticky: f.is_sticky(),
                     leave: f.get_leave(),
-                    arrival_time: f.get_arrival_time()
-                }).collect();
-                Ok(result)
-            }
-            Err(err) => {
-                println!("Reqwest Error: {}", err);
-                Err(Box::new(err))
-            }
+                    arrival_time: f.get_arrival_time(),
+                })
+                .collect();
+            Ok(result)
         }
+        Err(err) => {
+            println!("Reqwest Error: {}", err);
+            Err(Box::new(err))
+        }
+    }
 }
 
-fn convert_api_return_to_display(response: PredictionApiReturn, extra_messages: Option<Vec<ArrivalMessage>>) -> Vec<Box<dyn ArrivalDisplayable>> {
-    let extra_msg: Vec<Box<dyn ArrivalDisplayable>> = extra_messages.unwrap_or(Vec::new())
+fn convert_api_return_to_display(
+    response: PredictionApiReturn,
+    extra_messages: Option<Vec<ArrivalMessage>>,
+) -> Vec<Box<dyn ArrivalDisplayable>> {
+    let extra_msg: Vec<Box<dyn ArrivalDisplayable>> = extra_messages
+        .unwrap_or(Vec::new())
         .iter()
-        .filter(|v | (v.get_comparison_timestamp_no_sticky() - Utc::now()).num_seconds() >= 0) // Filter out custom messages that have expired
+        .filter(|v| (v.get_comparison_timestamp_no_sticky() - Utc::now()).num_seconds() >= 0) // Filter out custom messages that have expired
         .map(|v| Box::new(v.clone()) as _)
         .collect();
-    response.trains
+    response
+        .trains
         .iter()
         .map(|train| {
-            let arrival_as_number=  train.min.parse::<i64>();
+            let arrival_as_number = train.min.parse::<i64>();
 
             Box::new(TrainDisplayEntry {
                 arrival: train.min.clone(),
-                arrival_timestamp: Utc::now() + TimeDelta::minutes(if arrival_as_number.is_ok() {arrival_as_number.unwrap()} else {0}),
-                destination: if train.destination == "No Passenger" || train.destination == "NoPssenger" || train.destination == "ssenger" { "No Psngr".to_string() } else { train.destination.clone() },
+                arrival_timestamp: Utc::now()
+                    + TimeDelta::minutes(if arrival_as_number.is_ok() {
+                        arrival_as_number.unwrap()
+                    } else {
+                        0
+                    }),
+                destination: if train.destination == "No Passenger"
+                    || train.destination == "NoPssenger"
+                    || train.destination == "ssenger"
+                {
+                    "No Psngr".to_string()
+                } else {
+                    train.destination.clone()
+                },
                 line: train.get_line_enum(),
-                line_color: get_line_color(train.get_line_enum())
+                line_color: get_line_color(train.get_line_enum()),
             }) as _
         })
         .chain(extra_msg)
@@ -411,66 +476,81 @@ fn convert_api_return_to_display(response: PredictionApiReturn, extra_messages: 
         .collect()
 }
 
-pub fn render_arrival_display<D, T>(state: Vec<T>, canvas: &mut D) where D: DrawTarget<Color = Rgb888>, <D as DrawTarget>::Error: Debug, T: ArrivalDisplayable {
+pub fn render_arrival_display<D, T>(state: Vec<T>, canvas: &mut D)
+where
+    D: DrawTarget<Color = Rgb888>,
+    <D as DrawTarget>::Error: Debug,
+    T: ArrivalDisplayable,
+{
     let white_text_style = MonoTextStyle::new(&FONT_7X14, Rgb888::new(255, 255, 255));
     // Header
     let header_text_style = MonoTextStyle::new(&FONT_7X14, Rgb888::new(120, 120, 120));
-    Text::new( "LN DEST     LV MIN", Point::new(1, LINE_HEIGHT), header_text_style)
-        .draw(canvas)
-        .unwrap();
+    Text::new(
+        "LN DEST     LV MIN",
+        Point::new(1, LINE_HEIGHT),
+        header_text_style,
+    )
+    .draw(canvas)
+    .unwrap();
 
     // Line below header
     Rectangle::with_corners(
         Point::new(0, LINE_HEIGHT_WITH_PADDING),
-        Point::new(SCREEN_WIDTH as i32, LINE_HEIGHT_WITH_PADDING)
+        Point::new(SCREEN_WIDTH as i32, LINE_HEIGHT_WITH_PADDING),
     )
-        .into_styled(PrimitiveStyle::with_fill(Rgb888::new(40, 40, 40)))
-        .draw(canvas).unwrap();
+    .into_styled(PrimitiveStyle::with_fill(Rgb888::new(40, 40, 40)))
+    .draw(canvas)
+    .unwrap();
 
     for (index, message) in state.iter().enumerate().take(MAX_LINES) {
         // Draw left rectangle
         Rectangle::with_corners(
             Point::new(1, LINE_HEIGHT_WITH_PADDING * (index as i32 + 2)),
-            Point::new(2, LINE_HEIGHT_WITH_PADDING * (index as i32 + 1) + (LINE_HEIGHT_WITH_PADDING - LINE_HEIGHT))
+            Point::new(
+                2,
+                LINE_HEIGHT_WITH_PADDING * (index as i32 + 1)
+                    + (LINE_HEIGHT_WITH_PADDING - LINE_HEIGHT),
+            ),
         )
-            .into_styled(PrimitiveStyle::with_fill(message.get_line_color()))
-            .draw(canvas).unwrap();
+        .into_styled(PrimitiveStyle::with_fill(message.get_line_color()))
+        .draw(canvas)
+        .unwrap();
 
         // Draw line text
-        Text::new( 
+        Text::new(
             &get_line_string(message.get_line()),
             Point::new(4, LINE_HEIGHT_WITH_PADDING * (index as i32 + 2)),
-            MonoTextStyle::new(&FONT_7X14, message.get_line_color())
+            MonoTextStyle::new(&FONT_7X14, message.get_line_color()),
         )
-            .draw(canvas)
-            .unwrap();
+        .draw(canvas)
+        .unwrap();
 
         // Draw message
         Text::new(
             &message.get_message(),
             Point::new(22, LINE_HEIGHT_WITH_PADDING * (index as i32 + 2)),
-            MonoTextStyle::new(&FONT_7X14, message.get_line_color())
+            MonoTextStyle::new(&FONT_7X14, message.get_line_color()),
         )
-            .draw(canvas)
-            .unwrap();
+        .draw(canvas)
+        .unwrap();
 
         // Draw LEAVE - Custom for this sign to indicate when to leave the office to catch this train (15 minutes before)
-        Text::new( 
+        Text::new(
             &message.get_leave(),
             Point::new(85, LINE_HEIGHT_WITH_PADDING * (index as i32 + 2)),
-            white_text_style
+            white_text_style,
         )
-            .draw(canvas)
-            .unwrap();
+        .draw(canvas)
+        .unwrap();
 
         // Draw minutes
-        Text::new( 
+        Text::new(
             &message.get_arrival_time(),
             Point::new(106, LINE_HEIGHT_WITH_PADDING * (index as i32 + 2)),
-            white_text_style
+            white_text_style,
         )
-            .draw(canvas)
-            .unwrap();
+        .draw(canvas)
+        .unwrap();
     }
 }
 

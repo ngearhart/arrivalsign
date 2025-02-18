@@ -1,16 +1,27 @@
 use std::{fmt::Debug, time::Duration};
 
-use embedded_graphics::{mono_font::{ascii::{FONT_5X7, FONT_6X10, FONT_7X13_BOLD, FONT_7X14, FONT_7X14_BOLD}, MonoTextStyle}, pixelcolor::Rgb888, prelude::{Dimensions, DrawTarget, PixelColor, Point, Primitive, RgbColor, Size}, primitives::{PrimitiveStyle, Rectangle}, text::{renderer::{CharacterStyle, TextRenderer}, Text}};
-use embedded_text::{alignment::HorizontalAlignment, plugin::PluginMarker, style::{HeightMode, TextBoxStyleBuilder}, TextBox};
+use embedded_graphics::{
+    mono_font::{
+        ascii::{FONT_6X10, FONT_7X14_BOLD},
+        MonoTextStyle,
+    },
+    pixelcolor::Rgb888,
+    prelude::{DrawTarget, Point, Primitive, RgbColor},
+    primitives::{PrimitiveStyle, Rectangle},
+};
+use embedded_text::{
+    alignment::HorizontalAlignment,
+    style::{HeightMode, TextBoxStyleBuilder},
+    TextBox,
+};
 use log::{debug, info};
-use tokio::{spawn, sync::watch::Sender, task::JoinHandle};
 use rand::seq::IteratorRandom;
+use tokio::{spawn, sync::watch::Sender, task::JoinHandle};
 
-use crate::firebase::{Alert, AlertWidget, LoadableWidget};
+use crate::firebase::{AlertWidget, LoadableWidget};
 use embedded_graphics::Drawable;
 
-use super::{LINE_HEIGHT, SCREEN_HEIGHT, SCREEN_WIDTH};
-
+use super::{SCREEN_HEIGHT, SCREEN_WIDTH};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum AlertMode {
@@ -18,14 +29,14 @@ pub enum AlertMode {
     IntroB,
     MessageA,
     MessageB,
-    Hidden
+    Hidden,
 }
 
 #[derive(Clone, Debug)]
 pub struct AlertState {
     pub mode: AlertMode,
     pub currently_shown_message: String,
-    scroll_index: u32
+    scroll_index: u32,
 }
 
 impl AlertState {
@@ -33,7 +44,7 @@ impl AlertState {
         AlertState {
             mode: AlertMode::Hidden,
             currently_shown_message: String::from(""),
-            scroll_index: 0
+            scroll_index: 0,
         }
     }
 }
@@ -49,23 +60,29 @@ pub fn spawn_alert_update_task(state_tx: Sender<AlertState>) -> JoinHandle<()> {
             info!(target: "alert_state_update", "New state loaded. Sending to main thread.");
             let intro_a = AlertState {
                 mode: AlertMode::IntroA,
-                currently_shown_message: new_state.alerts.iter().choose(&mut rand::rng()).unwrap().message.to_string(),
-                scroll_index: 0
+                currently_shown_message: new_state
+                    .alerts
+                    .iter()
+                    .choose(&mut rand::rng())
+                    .unwrap()
+                    .message
+                    .to_string(),
+                scroll_index: 0,
             };
             let intro_b = AlertState {
                 mode: AlertMode::IntroB,
                 currently_shown_message: intro_a.currently_shown_message.clone(),
-                scroll_index: 0
+                scroll_index: 0,
             };
             let mut message_a = AlertState {
                 mode: AlertMode::MessageA,
                 currently_shown_message: intro_a.currently_shown_message.clone(),
-                scroll_index: 0
+                scroll_index: 0,
             };
             let mut message_b = AlertState {
                 mode: AlertMode::MessageB,
                 currently_shown_message: intro_a.currently_shown_message.clone(),
-                scroll_index: 0
+                scroll_index: 0,
             };
             if new_state.alerts.len() > 0 {
                 // Show intro
@@ -100,8 +117,11 @@ pub fn spawn_alert_update_task(state_tx: Sender<AlertState>) -> JoinHandle<()> {
     })
 }
 
-
-pub fn render_alert_display<D>(state: AlertState, canvas: &mut D) where D: DrawTarget<Color = Rgb888>, <D as DrawTarget>::Error: Debug {
+pub fn render_alert_display<D>(state: AlertState, canvas: &mut D)
+where
+    D: DrawTarget<Color = Rgb888>,
+    <D as DrawTarget>::Error: Debug,
+{
     let border_rect_style = PrimitiveStyle::with_fill(Rgb888::YELLOW);
     let invisible_style = PrimitiveStyle::with_fill(Rgb888::BLACK);
     const RECT_WIDTH: i32 = 5;
@@ -110,68 +130,128 @@ pub fn render_alert_display<D>(state: AlertState, canvas: &mut D) where D: DrawT
         // Top row
         Rectangle::with_corners(
             Point::new(i * RECT_WIDTH * 2, 0),
-            Point::new(RECT_WIDTH + i * RECT_WIDTH * 2 - 1, RECT_WIDTH - 1)
+            Point::new(RECT_WIDTH + i * RECT_WIDTH * 2 - 1, RECT_WIDTH - 1),
         )
-            .into_styled(if state.mode == AlertMode::IntroA || state.mode == AlertMode::MessageA { border_rect_style } else { invisible_style })
-            .draw(canvas).unwrap();
+        .into_styled(
+            if state.mode == AlertMode::IntroA || state.mode == AlertMode::MessageA {
+                border_rect_style
+            } else {
+                invisible_style
+            },
+        )
+        .draw(canvas)
+        .unwrap();
 
         Rectangle::with_corners(
             Point::new((i * RECT_WIDTH * 2) + RECT_WIDTH, 0),
-            Point::new((RECT_WIDTH + i * RECT_WIDTH * 2 - 1) + RECT_WIDTH, RECT_WIDTH - 1)
+            Point::new(
+                (RECT_WIDTH + i * RECT_WIDTH * 2 - 1) + RECT_WIDTH,
+                RECT_WIDTH - 1,
+            ),
         )
-            .into_styled(if state.mode == AlertMode::IntroA || state.mode == AlertMode::MessageA { invisible_style } else { border_rect_style })
-            .draw(canvas).unwrap();
+        .into_styled(
+            if state.mode == AlertMode::IntroA || state.mode == AlertMode::MessageA {
+                invisible_style
+            } else {
+                border_rect_style
+            },
+        )
+        .draw(canvas)
+        .unwrap();
 
         // Bottom row
         Rectangle::with_corners(
             Point::new(i * RECT_WIDTH * 2, SCREEN_HEIGHT as i32 - RECT_WIDTH),
-            Point::new(RECT_WIDTH + i * RECT_WIDTH * 2 - 1, SCREEN_HEIGHT as i32)
+            Point::new(RECT_WIDTH + i * RECT_WIDTH * 2 - 1, SCREEN_HEIGHT as i32),
         )
-            .into_styled(if state.mode == AlertMode::IntroA || state.mode == AlertMode::MessageA { invisible_style } else { border_rect_style })
-            .draw(canvas).unwrap();
+        .into_styled(
+            if state.mode == AlertMode::IntroA || state.mode == AlertMode::MessageA {
+                invisible_style
+            } else {
+                border_rect_style
+            },
+        )
+        .draw(canvas)
+        .unwrap();
 
         Rectangle::with_corners(
-            Point::new((i * RECT_WIDTH * 2) + RECT_WIDTH, SCREEN_HEIGHT as i32 - RECT_WIDTH),
-            Point::new((RECT_WIDTH + i * RECT_WIDTH * 2 - 1) + RECT_WIDTH, SCREEN_HEIGHT as i32)
+            Point::new(
+                (i * RECT_WIDTH * 2) + RECT_WIDTH,
+                SCREEN_HEIGHT as i32 - RECT_WIDTH,
+            ),
+            Point::new(
+                (RECT_WIDTH + i * RECT_WIDTH * 2 - 1) + RECT_WIDTH,
+                SCREEN_HEIGHT as i32,
+            ),
         )
-            .into_styled(if state.mode == AlertMode::IntroA || state.mode == AlertMode::MessageA { border_rect_style } else { invisible_style })
-            .draw(canvas).unwrap();
+        .into_styled(
+            if state.mode == AlertMode::IntroA || state.mode == AlertMode::MessageA {
+                border_rect_style
+            } else {
+                invisible_style
+            },
+        )
+        .draw(canvas)
+        .unwrap();
     }
 
     let big_text_style = MonoTextStyle::new(&FONT_7X14_BOLD, Rgb888::new(255, 255, 255));
     let small_text_style = MonoTextStyle::new(&FONT_6X10, Rgb888::new(255, 255, 255));
     let centered_textbox_style = TextBoxStyleBuilder::new()
-        .height_mode(HeightMode::Exact(embedded_text::style::VerticalOverdraw::Visible))
+        .height_mode(HeightMode::Exact(
+            embedded_text::style::VerticalOverdraw::Visible,
+        ))
         .vertical_alignment(embedded_text::alignment::VerticalAlignment::Middle)
         .alignment(HorizontalAlignment::Center)
         .paragraph_spacing(6)
         .build();
     let top_aligned_textbox_style = TextBoxStyleBuilder::new()
-        .height_mode(HeightMode::Exact(embedded_text::style::VerticalOverdraw::FullRowsOnly))
+        .height_mode(HeightMode::Exact(
+            embedded_text::style::VerticalOverdraw::FullRowsOnly,
+        ))
         .vertical_alignment(embedded_text::alignment::VerticalAlignment::Top)
         .alignment(HorizontalAlignment::Center)
         .paragraph_spacing(6)
         .build();
     let bounds = Rectangle::with_corners(
         Point::new(0, RECT_WIDTH),
-        Point::new(SCREEN_WIDTH as i32, SCREEN_HEIGHT as i32 - RECT_WIDTH)
+        Point::new(SCREEN_WIDTH as i32, SCREEN_HEIGHT as i32 - RECT_WIDTH),
     );
 
     if state.mode == AlertMode::IntroA || state.mode == AlertMode::IntroB {
-        TextBox::with_textbox_style("Metro Alert", bounds, big_text_style, centered_textbox_style)
+        TextBox::with_textbox_style(
+            "Metro Alert",
+            bounds,
+            big_text_style,
+            centered_textbox_style,
+        )
+        .draw(canvas)
+        .unwrap();
+    } else if state.mode == AlertMode::MessageA || state.mode == AlertMode::MessageB {
+        let height = centered_textbox_style.measure_text_height(
+            &small_text_style,
+            &state.currently_shown_message,
+            bounds.size.width,
+        );
+        if height > bounds.size.height {
+            TextBox::with_textbox_style(
+                &state.currently_shown_message,
+                bounds,
+                small_text_style,
+                top_aligned_textbox_style,
+            )
+            .set_vertical_offset(-2 * state.scroll_index as i32) // Magic number: line height
             .draw(canvas)
             .unwrap();
-    } else if state.mode == AlertMode::MessageA || state.mode == AlertMode::MessageB {
-        let height = centered_textbox_style.measure_text_height(&small_text_style, &state.currently_shown_message, bounds.size.width);
-        if height > bounds.size.height {
-            TextBox::with_textbox_style(&state.currently_shown_message, bounds, small_text_style, top_aligned_textbox_style)
-                .set_vertical_offset(-2 * state.scroll_index as i32) // Magic number: line height
-                .draw(canvas)
-                .unwrap();
         } else {
-            TextBox::with_textbox_style(&state.currently_shown_message, bounds, small_text_style, centered_textbox_style)
-                .draw(canvas)
-                .unwrap();
+            TextBox::with_textbox_style(
+                &state.currently_shown_message,
+                bounds,
+                small_text_style,
+                centered_textbox_style,
+            )
+            .draw(canvas)
+            .unwrap();
         }
     }
 }

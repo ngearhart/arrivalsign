@@ -1,18 +1,17 @@
-use std::{any::TypeId, collections::HashMap, env};
+use std::{collections::HashMap, env};
 
 use firebase_rs::Firebase;
-use futures::future::{try_join_all, TryJoinAll};
 use retry::delay::{jitter, Exponential};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct Widget {
-    name: String
+    name: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Alert {
-    pub message: String
+    pub message: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -25,20 +24,24 @@ pub struct AlertWidget {
 pub struct ArrivalWidget {
     name: String,
     pub station_id: String,
-    pub messages: Option<Vec<ArrivalMessage>>
+    pub messages: Option<Vec<ArrivalMessage>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ArrivalMessage {
     pub message: String,
     pub sticky: bool,
-    pub time: i64
+    pub time: i64,
 }
 
 impl AlertWidget {
     pub fn get_messages(&self) -> Vec<String> {
-        self.alerts.iter().cloned().map(|alert| alert.message).collect::<Vec<String>>()
-    } 
+        self.alerts
+            .iter()
+            .cloned()
+            .map(|alert| alert.message)
+            .collect::<Vec<String>>()
+    }
 }
 
 macro_rules! retry {
@@ -70,30 +73,39 @@ pub trait LoadableWidget {
 impl LoadableWidget for ArrivalWidget {
     async fn load() -> Self {
         let widgets = get_widgets().await;
-        let key = widgets.keys().find(|&k| widgets.get(k).unwrap().name == "DCMetroTrainArrivalWidget").unwrap();
+        let key = widgets
+            .keys()
+            .find(|&k| widgets.get(k).unwrap().name == "DCMetroTrainArrivalWidget")
+            .unwrap();
 
         retry! {
             get_firebase().at("widgets").at(key).get::<ArrivalWidget>().await
-        }.expect("Could not get ArrivalWidget from firebase")
+        }
+        .expect("Could not get ArrivalWidget from firebase")
     }
 }
 
 impl LoadableWidget for AlertWidget {
     async fn load() -> Self {
         let widgets = get_widgets().await;
-        let key = widgets.keys().find(|&k| widgets.get(k).unwrap().name == "DCMetroAlertsWidget").unwrap();
+        let key = widgets
+            .keys()
+            .find(|&k| widgets.get(k).unwrap().name == "DCMetroAlertsWidget")
+            .unwrap();
 
         retry! {
             get_firebase().at("widgets").at(key).get::<AlertWidget>().await
-        }.expect("Could not get AlertWidget from firebase")
+        }
+        .expect("Could not get AlertWidget from firebase")
     }
 }
 
 fn get_firebase() -> Firebase {
     Firebase::auth(
         &env::var("FIREBASE_URL").unwrap(),
-        &env::var("FIREBASE_API_KEY").unwrap()
-    ).unwrap()
+        &env::var("FIREBASE_API_KEY").unwrap(),
+    )
+    .unwrap()
 }
 
 async fn get_widgets() -> HashMap<String, Widget> {
@@ -101,7 +113,8 @@ async fn get_widgets() -> HashMap<String, Widget> {
 
     let widgets = retry! {{
         firebase.get::<HashMap<String, Widget>>().await
-    }}.expect("Could not connect to Firebase after retries");
+    }}
+    .expect("Could not connect to Firebase after retries");
 
     widgets
 }
