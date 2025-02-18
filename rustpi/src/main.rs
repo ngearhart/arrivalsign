@@ -2,10 +2,12 @@
 compile_error!("feature \"rpi\" and feature \"simulator\" cannot be enabled at the same time");
 
 mod firebase;
+mod led;
 mod widgets;
 
 use chrono::Utc;
 use dotenv::dotenv;
+use led::{ DrawableScreen, ScreenManager};
 use tokio::sync::watch;
 use std::time::Duration;
 use widgets::{
@@ -16,31 +18,6 @@ use widgets::{
     },
 };
 
-use embedded_graphics::{
-    pixelcolor::Rgb888,
-    prelude::*,
-};
-
-use embedded_graphics_simulator::{OutputSettingsBuilder, SimulatorEvent, Window};
-#[cfg(feature = "rpi")]
-use rpi_led_matrix::{args, LedMatrix};
-
-#[cfg(feature = "simulator")]
-use embedded_graphics_simulator::SimulatorDisplay;
-
-// Change depending on your monitor resolution.
-#[cfg(feature = "simulator")]
-const WINDOW_SCALING: u32 = 8;
-
-#[cfg(feature = "rpi")]
-fn get_canvas() {}
-
-#[cfg(feature = "simulator")]
-fn get_canvas() -> SimulatorDisplay<Rgb888> {
-    use widgets::{SCREEN_HEIGHT, SCREEN_WIDTH};
-
-    return SimulatorDisplay::<Rgb888>::new(Size::new(SCREEN_WIDTH, SCREEN_HEIGHT));
-}
 
 #[tokio::main]
 async fn main() {
@@ -64,10 +41,7 @@ async fn main() {
     // let mut canvas = matrix.canvas();
 
 
-    let mut canvas = get_canvas();
-
-    let output_settings = OutputSettingsBuilder::new().scale(WINDOW_SCALING).build();
-    let mut window = Window::new("Metro Sign Simulator", &output_settings);
+    let mut manager = ScreenManager::init();
 
     let mut loading_message: Vec<SimpleArrivalDisplayable> = Vec::new();
     loading_message.push(SimpleArrivalDisplayable::loading());
@@ -81,6 +55,8 @@ async fn main() {
     spawn_alert_update_task(alert_tx);
 
     'running: loop {
+        manager.clear();
+
         let mut messages: Vec<SimpleArrivalDisplayable> = Vec::new();
         let mut alert_state: AlertState = AlertState::blank();
 
@@ -94,17 +70,12 @@ async fn main() {
             alert_state = alert_rx.borrow_and_update().clone();
         }
 
-        canvas.clear(Rgb888::BLACK).unwrap();
-
         if alert_state.mode != AlertMode::Hidden {
-            render_alert_display(alert_state, &mut canvas);
+            render_alert_display(alert_state, &mut manager.canvas);
         } else {
-            render_arrival_display(messages, &mut canvas);
+            render_arrival_display(messages, &mut manager.canvas);
         }
-
-        window.update(&canvas);
-
-        if window.events().any(|e| e == SimulatorEvent::Quit) {
+        if manager.run_updates_should_exit() {
             break 'running;
         }
 
