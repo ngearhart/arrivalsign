@@ -1797,8 +1797,7 @@ dependencies = [
 [[package]]
 name = "rpi-led-panel"
 version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6deb2698abb6e6ed104b69cd6b3fe5bf8b54107f3a84a053cf300a13cc7ace0c"
+source = "git+https://github.com/EmbersArc/rpi_led_panel.git?rev=a7225755d77d6baefaff95f10f9b2470bf04441f#a7225755d77d6baefaff95f10f9b2470bf04441f"
 dependencies = [
  "argh",
  "embedded-graphics",

@@ -1,16 +1,16 @@
-
-
-use embedded_graphics::prelude::RgbColor;
 #[cfg(feature = "rpi")]
-use rpi_led_panel::{RGBMatrixConfig, RGBMatrix, Canvas};
+use rpi_led_panel::{RGBMatrixConfig, RGBMatrix, Canvas, HardwareMapping, NamedPixelMapperType};
 
 use std::fmt::Debug;
 
 #[cfg(feature = "simulator")]
 use embedded_graphics_simulator::{OutputSettingsBuilder, SimulatorEvent, Window, SimulatorDisplay};
+#[cfg(feature = "simulator")]
+use embedded_graphics::prelude::RgbColor;
 
 use embedded_graphics::{pixelcolor::Rgb888, prelude::{DrawTarget, Size}};
 
+#[cfg(feature = "simulator")]
 use crate::widgets::{SCREEN_HEIGHT, SCREEN_WIDTH};
 
 // Change depending on your monitor resolution.
@@ -33,7 +33,7 @@ where
 #[cfg(feature = "rpi")]
 pub struct ScreenManager {
     matrix: RGBMatrix,
-    pub canvas: Box<Canvas>
+    canvas: Box<Canvas>
 }
 
 #[cfg(feature = "rpi")]
@@ -50,7 +50,15 @@ impl DrawableScreen<Canvas> for ScreenManager {
     }
 
     fn init() -> Self {
-        let config = RGBMatrixConfig::default();
+        let mut config = RGBMatrixConfig::default();
+        config.hardware_mapping = HardwareMapping::adafruit_hat_pwm();
+        config.rows = 32;
+        config.cols = 64;
+        config.chain_length = 4;
+        config.pixelmapper = vec![NamedPixelMapperType::UMapper];
+        // config.refresh_rate = 60;
+        // config.pwm_bits = 7;
+
         let (matrix, canvas) = RGBMatrix::new(config, 0).expect("Matrix initialization failed");
         ScreenManager {
             matrix: matrix,
@@ -66,7 +74,7 @@ impl DrawableScreen<Canvas> for ScreenManager {
 #[cfg(feature = "simulator")]
 pub struct ScreenManager {
     window: Window,
-    pub canvas: SimulatorDisplay<Rgb888>
+    canvas: SimulatorDisplay<Rgb888>
 }
 
 #[cfg(feature = "simulator")]
