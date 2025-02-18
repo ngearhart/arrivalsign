@@ -8,7 +8,7 @@ use std::fmt::Debug;
 
 #[cfg(feature = "simulator")]
 use embedded_graphics_simulator::{OutputSettingsBuilder, SimulatorEvent, Window, SimulatorDisplay};
-#[cfg(feature = "simulator")]
+
 use embedded_graphics::{pixelcolor::Rgb888, prelude::{DrawTarget, Size}};
 
 use crate::widgets::{SCREEN_HEIGHT, SCREEN_WIDTH};
@@ -18,13 +18,16 @@ use crate::widgets::{SCREEN_HEIGHT, SCREEN_WIDTH};
 const WINDOW_SCALING: u32 = 8;
 
 
-pub trait DrawableScreen
+pub trait DrawableScreen<D>
+where
+    D: DrawTarget<Color = Rgb888>,
+    <D as DrawTarget>::Error: Debug,
 {
     fn clear(&mut self);
     fn run_updates_should_exit(&mut self) -> bool;
     fn init() -> Self;
 
-    fn get_canvas(&mut self) -> &mut Canvas;
+    fn get_canvas(&mut self) -> &mut D;
 }
 
 #[cfg(feature = "rpi")]
@@ -34,7 +37,7 @@ pub struct ScreenManager {
 }
 
 #[cfg(feature = "rpi")]
-impl DrawableScreen for ScreenManager {
+impl DrawableScreen<Canvas> for ScreenManager {
 
     fn clear(&mut self) {
         self.canvas.fill(0, 0, 0);
