@@ -71,9 +71,9 @@ async fn main() {
         }
 
         if alert_state.mode != AlertMode::Hidden {
-            render_alert_display(alert_state, &mut manager.canvas);
+            render_alert_display(alert_state, manager.get_canvas());
         } else {
-            render_arrival_display(messages, &mut manager.canvas);
+            render_arrival_display(messages, manager.get_canvas());
         }
         if manager.run_updates_should_exit() {
             break 'running;

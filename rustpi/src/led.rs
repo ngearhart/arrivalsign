@@ -23,6 +23,8 @@ pub trait DrawableScreen
     fn clear(&mut self);
     fn run_updates_should_exit(&mut self) -> bool;
     fn init() -> Self;
+
+    fn get_canvas(&mut self) -> &mut Canvas;
 }
 
 #[cfg(feature = "rpi")]
@@ -34,18 +36,27 @@ pub struct ScreenManager {
 #[cfg(feature = "rpi")]
 impl DrawableScreen for ScreenManager {
 
-    fn run_updates(&mut self) {
+    fn clear(&mut self) {
         self.canvas.fill(0, 0, 0);
-        self.canvas = self.matrix.update_on_vsync(self.canvas);
+    }
+
+    fn run_updates_should_exit(&mut self) -> bool {
+        self.canvas = self.matrix.update_on_vsync(self.canvas.clone());
+
+        false
     }
 
     fn init() -> Self {
         let config = RGBMatrixConfig::default();
         let (matrix, canvas) = RGBMatrix::new(config, 0).expect("Matrix initialization failed");
         ScreenManager {
-            matrix,
-            canvas
+            matrix: matrix,
+            canvas: canvas
         }
+    }
+
+    fn get_canvas(&mut self) -> &mut Canvas {
+        self.canvas.as_mut()
     }
 }
 
