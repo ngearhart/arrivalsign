@@ -56,8 +56,9 @@ impl DrawableScreen<Canvas> for ScreenManager {
         config.cols = 64;
         config.chain_length = 4;
         config.pixelmapper = vec![NamedPixelMapperType::UMapper];
-        // config.refresh_rate = 60;
-        // config.pwm_bits = 7;
+        config.refresh_rate = 120;
+        config.pwm_lsb_nanoseconds = 50;
+        config.pwm_bits = 7;
 
         let (matrix, canvas) = RGBMatrix::new(config, 0).expect("Matrix initialization failed");
         ScreenManager {
