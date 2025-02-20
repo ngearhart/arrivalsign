@@ -28,7 +28,7 @@ async fn main() {
 
     let mut manager = ScreenManager::init();
     welcome(&mut manager).await;
-    // check_for_network(&mut manager).await;
+    check_for_network(&mut manager).await;
 
 
     let mut loading_message: Vec<SimpleArrivalDisplayable> = Vec::new();
