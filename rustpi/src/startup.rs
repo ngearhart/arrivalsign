@@ -1,6 +1,5 @@
 use std::{cmp::max, time::Duration};
 
-use partial_min_max::min;
 use embedded_graphics::{mono_font::{ascii::FONT_6X10, MonoTextStyle}, pixelcolor::Rgb888, prelude::{Point, Primitive, RgbColor}, primitives::{PrimitiveStyle, Rectangle}, Drawable};
 use embedded_text::{alignment::HorizontalAlignment, style::{HeightMode, TextBoxStyleBuilder}, TextBox};
 use log::info;
@@ -26,6 +25,7 @@ pub async fn welcome(manager: &mut ScreenManager) {
     let character_style_target_color = Rgb888::new(0xEE, 0xF1, 0xBD);
     let character_style = MonoTextStyle::new(&FONT_6X10, character_style_target_color);
 
+    let black_style = PrimitiveStyle::with_fill(Rgb888::BLACK);
     let box_1_style = PrimitiveStyle::with_fill(Rgb888::new(0x49, 0x47, 0x5B));
     let box_2_style = PrimitiveStyle::with_fill(Rgb888::new(0x79, 0x94, 0x96));
     let box_3_style = PrimitiveStyle::with_fill(Rgb888::new(0x64, 0x45, 0x36));
@@ -35,6 +35,14 @@ pub async fn welcome(manager: &mut ScreenManager) {
 
     for i in 0..SCREEN_HEIGHT * 3 {
         manager.clear();
+
+        Rectangle::with_corners(
+            top_corner, 
+            Point::new(SCREEN_WIDTH as i32, SCREEN_HEIGHT as i32 - ease_out_cubic(i as f32 / 2.0, SCREEN_HEIGHT as f32) as i32)
+        )
+            .into_styled(black_style)
+            .draw(manager.get_canvas())
+            .unwrap();
 
         Rectangle::with_corners(
             Point::new(0, SCREEN_HEIGHT as i32 - ease_out_cubic(i as f32 / 2.0, SCREEN_HEIGHT as f32) as i32), 
@@ -105,6 +113,16 @@ pub async fn welcome(manager: &mut ScreenManager) {
             .into_styled(box_3_style)
             .draw(manager.get_canvas())
             .unwrap();
+
+
+        Rectangle::with_corners(
+            Point::new(0, SCREEN_HEIGHT as i32 - ease_out_cubic((i as f32 / 2.0)  - 20.0, SCREEN_HEIGHT as f32) as i32),
+            bottom_corner
+        )
+            .into_styled(black_style)
+            .draw(manager.get_canvas())
+            .unwrap();
+    
 
         manager.run_updates_should_exit();
         tokio::time::sleep(Duration::from_nanos(100)).await;
