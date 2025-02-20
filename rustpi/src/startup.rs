@@ -1,5 +1,6 @@
-use std::{cmp::{max, min}, time::Duration};
+use std::{cmp::max, time::Duration};
 
+use partial_min_max::min;
 use embedded_graphics::{mono_font::{ascii::FONT_6X10, MonoTextStyle}, pixelcolor::Rgb888, prelude::{Point, Primitive, RgbColor}, primitives::{PrimitiveStyle, Rectangle}, Drawable};
 use embedded_text::{alignment::HorizontalAlignment, style::{HeightMode, TextBoxStyleBuilder}, TextBox};
 use log::info;
@@ -10,14 +11,6 @@ use crate::{led::{DrawableScreen, ScreenManager}, widgets::{SCREEN_HEIGHT, SCREE
 
 fn ease_out_cubic(x: f32, scaling_limit: f32) -> u32 {
     ((1.0 - (1.0 - x / scaling_limit).powf(3.0)) * scaling_limit).round() as u32
-}
-
-fn get_brightness(input: Rgb888, brightness: f32) -> Rgb888 {
-    Rgb888::new(
-        (brightness * input.r() as f32).round() as u8,
-        (brightness * input.g() as f32).round() as u8,
-        (brightness * input.b() as f32).round() as u8,
-    )
 }
 
 pub async fn welcome(manager: &mut ScreenManager) {
@@ -31,7 +24,7 @@ pub async fn welcome(manager: &mut ScreenManager) {
     .build();
 
     let character_style_target_color = Rgb888::new(0xEE, 0xF1, 0xBD);
-    let character_style = MonoTextStyle::new(&FONT_6X10, Rgb888::new(0x84, 0xD2, 0xF6));
+    let character_style = MonoTextStyle::new(&FONT_6X10, character_style_target_color);
 
     let box_1_style = PrimitiveStyle::with_fill(Rgb888::new(0x49, 0x47, 0x5B));
     let box_2_style = PrimitiveStyle::with_fill(Rgb888::new(0x79, 0x94, 0x96));
@@ -45,7 +38,7 @@ pub async fn welcome(manager: &mut ScreenManager) {
 
         Rectangle::with_corners(
             Point::new(0, SCREEN_HEIGHT as i32 - ease_out_cubic(i as f32 / 2.0, SCREEN_HEIGHT as f32) as i32), 
-            bottom_corner
+            Point::new(SCREEN_WIDTH as i32, SCREEN_HEIGHT as i32 - ease_out_cubic((i as f32 / 2.0) - 10.0, SCREEN_HEIGHT as f32) as i32)
         )
             .into_styled(box_1_style)
             .draw(manager.get_canvas())
@@ -53,7 +46,7 @@ pub async fn welcome(manager: &mut ScreenManager) {
 
         Rectangle::with_corners(
             Point::new(0, SCREEN_HEIGHT as i32 - ease_out_cubic((i as f32 / 2.0) - 10.0, SCREEN_HEIGHT as f32) as i32), 
-            bottom_corner
+            Point::new(SCREEN_WIDTH as i32, SCREEN_HEIGHT as i32 - ease_out_cubic((i as f32 / 2.0) - 20.0, SCREEN_HEIGHT as f32) as i32)
         )
             .into_styled(box_2_style)
             .draw(manager.get_canvas())
@@ -67,18 +60,17 @@ pub async fn welcome(manager: &mut ScreenManager) {
             .draw(manager.get_canvas())
             .unwrap();
 
-        character_style.text_color = Some(get_brightness(character_style_target_color, max(min(i - 40, 0) as f32 / (SCREEN_HEIGHT * 3) as f32, 1.0)));
-        TextBox::with_textbox_style(
-            "WMATA Metrorail Arrival Sign\nby Noah Gearhart\nfor Dark Wolf Solutions",
-            Rectangle::with_corners(
-                top_corner,
-                bottom_corner
-            ),
-            character_style,
-            centered_textbox_style,
-        )
-        .draw(manager.get_canvas())
-        .unwrap();
+        // TextBox::with_textbox_style(
+        //     "WMATA Metrorail Arrival Sign\nby Noah Gearhart\nfor Dark Wolf Solutions",
+        //     Rectangle::with_corners(
+        //         top_corner,
+        //         bottom_corner
+        //     ),
+        //     character_style,
+        //     centered_textbox_style,
+        // )
+        // .draw(manager.get_canvas())
+        // .unwrap();
 
         manager.run_updates_should_exit();
         tokio::time::sleep(Duration::from_nanos(100)).await;
@@ -91,7 +83,7 @@ pub async fn welcome(manager: &mut ScreenManager) {
         manager.clear();
 
         Rectangle::with_corners(
-            top_corner, 
+            Point::new(0, SCREEN_HEIGHT as i32 - ease_out_cubic((i as f32 / 2.0) - 10.0, SCREEN_HEIGHT as f32) as i32), 
             Point::new(SCREEN_WIDTH as i32, SCREEN_HEIGHT as i32 - ease_out_cubic((i as f32 / 2.0)  - 20.0, SCREEN_HEIGHT as f32) as i32)
         )
             .into_styled(box_1_style)
@@ -99,7 +91,7 @@ pub async fn welcome(manager: &mut ScreenManager) {
             .unwrap();
 
         Rectangle::with_corners(
-            top_corner, 
+            Point::new(0, SCREEN_HEIGHT as i32 - ease_out_cubic(i as f32 / 2.0, SCREEN_HEIGHT as f32) as i32), 
             Point::new(SCREEN_WIDTH as i32, SCREEN_HEIGHT as i32 - ease_out_cubic((i as f32 / 2.0) - 10.0, SCREEN_HEIGHT as f32) as i32)
         )
             .into_styled(box_2_style)
