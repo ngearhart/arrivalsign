@@ -4,10 +4,12 @@ compile_error!("feature \"rpi\" and feature \"simulator\" cannot be enabled at t
 mod firebase;
 mod led;
 mod widgets;
+mod startup;
 
 use chrono::Utc;
 use dotenv::dotenv;
 use led::{ DrawableScreen, ScreenManager};
+use startup::{check_for_network, welcome};
 use tokio::sync::watch;
 use std::time::Duration;
 use widgets::{
@@ -24,24 +26,10 @@ async fn main() {
     dotenv().ok();
     env_logger::init();
 
-    // let app = args::add_matrix_args(
-    //     App::new("C++ Library Example")
-    //         .about("shows basic usage of matrix arguments")
-    //         .version(crate_version!())
-    //         .arg(
-    //             arg!(--loops <LOOPS> "number of cycles to spin the line")
-    //                 .default_value("5")
-    //                 .required(false),
-    //         ),
-    // );
-    // let matches = app.get_matches();
-    // let (options, rt_options) = args::matrix_options_from_args(&matches);
-
-    // let matrix = LedMatrix::new(Some(options), Some(rt_options)).unwrap();
-    // let mut canvas = matrix.canvas();
-
-
     let mut manager = ScreenManager::init();
+    welcome(&mut manager).await;
+    // check_for_network(&mut manager).await;
+
 
     let mut loading_message: Vec<SimpleArrivalDisplayable> = Vec::new();
     loading_message.push(SimpleArrivalDisplayable::loading());
