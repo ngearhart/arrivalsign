@@ -12,7 +12,6 @@ rpi = ["dep:rpi-led-panel"]
 rpi-led-panel = { version = "0.6.0", optional = true, git = "https://github.com/EmbersArc/rpi_led_panel.git", rev = "a7225755d77d6baefaff95f10f9b2470bf04441f" }
 embedded-graphics-simulator = { version = "0.7.0", optional = true }
 embedded-graphics = "0.8.1"
-cached = "0.54.0"
 dotenv = "0.15.0"
 firebase-rs = "2.2.0"
 serde = "1.0.217"
@@ -27,3 +26,4 @@ env_logger = "0.11.6"
 log = "0.4.25"
 rand = "0.9.0"
 embedded-text = "0.7.2"
+sysinfo = "0.33.1"

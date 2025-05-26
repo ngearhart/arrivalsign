@@ -30,7 +30,7 @@ struct PredictionApiReturn {
 #[derive(Serialize, Deserialize, Debug)]
 struct Train {
     #[serde(rename(deserialize = "Car"))]
-    car: String,
+    car: Option<String>,
     #[serde(rename(deserialize = "Destination"))]
     destination: String,
     #[serde(rename(deserialize = "DestinationCode"))]

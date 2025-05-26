@@ -1,14 +1,19 @@
 #[cfg(feature = "rpi")]
-use rpi_led_panel::{RGBMatrixConfig, RGBMatrix, Canvas, HardwareMapping, NamedPixelMapperType};
+use rpi_led_panel::{Canvas, HardwareMapping, NamedPixelMapperType, RGBMatrix, RGBMatrixConfig};
 
 use std::fmt::Debug;
 
 #[cfg(feature = "simulator")]
-use embedded_graphics_simulator::{OutputSettingsBuilder, SimulatorEvent, Window, SimulatorDisplay};
-#[cfg(feature = "simulator")]
 use embedded_graphics::prelude::RgbColor;
+#[cfg(feature = "simulator")]
+use embedded_graphics_simulator::{
+    OutputSettingsBuilder, SimulatorDisplay, SimulatorEvent, Window,
+};
 
-use embedded_graphics::{pixelcolor::Rgb888, prelude::{DrawTarget, Size}};
+use embedded_graphics::{
+    pixelcolor::Rgb888,
+    prelude::{DrawTarget, Size},
+};
 
 #[cfg(feature = "simulator")]
 use crate::widgets::{SCREEN_HEIGHT, SCREEN_WIDTH};
@@ -16,7 +21,6 @@ use crate::widgets::{SCREEN_HEIGHT, SCREEN_WIDTH};
 // Change depending on your monitor resolution.
 #[cfg(feature = "simulator")]
 const WINDOW_SCALING: u32 = 8;
-
 
 pub trait DrawableScreen<D>
 where
@@ -33,12 +37,11 @@ where
 #[cfg(feature = "rpi")]
 pub struct ScreenManager {
     matrix: RGBMatrix,
-    canvas: Box<Canvas>
+    canvas: Box<Canvas>,
 }
 
 #[cfg(feature = "rpi")]
 impl DrawableScreen<Canvas> for ScreenManager {
-
     fn clear(&mut self) {
         self.canvas.fill(0, 0, 0);
     }
@@ -63,7 +66,7 @@ impl DrawableScreen<Canvas> for ScreenManager {
         let (matrix, canvas) = RGBMatrix::new(config, 0).expect("Matrix initialization failed");
         ScreenManager {
             matrix: matrix,
-            canvas: canvas
+            canvas: canvas,
         }
     }
 
@@ -75,12 +78,11 @@ impl DrawableScreen<Canvas> for ScreenManager {
 #[cfg(feature = "simulator")]
 pub struct ScreenManager {
     window: Window,
-    canvas: SimulatorDisplay<Rgb888>
+    canvas: SimulatorDisplay<Rgb888>,
 }
 
 #[cfg(feature = "simulator")]
 impl DrawableScreen<SimulatorDisplay<Rgb888>> for ScreenManager {
-
     fn clear(&mut self) {
         self.canvas.clear(Rgb888::BLACK).unwrap();
     }
@@ -95,7 +97,7 @@ impl DrawableScreen<SimulatorDisplay<Rgb888>> for ScreenManager {
         let output_settings = OutputSettingsBuilder::new().scale(WINDOW_SCALING).build();
         ScreenManager {
             canvas: SimulatorDisplay::<Rgb888>::new(Size::new(SCREEN_WIDTH, SCREEN_HEIGHT)),
-            window: Window::new("Metro Sign Simulator", &output_settings)
+            window: Window::new("Metro Sign Simulator", &output_settings),
         }
     }
 

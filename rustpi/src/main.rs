@@ -3,45 +3,53 @@ compile_error!("feature \"rpi\" and feature \"simulator\" cannot be enabled at t
 
 mod firebase;
 mod led;
+mod startup;
 mod widgets;
 
 use chrono::Utc;
 use dotenv::dotenv;
-use led::{ DrawableScreen, ScreenManager};
-use tokio::sync::watch;
+use led::{DrawableScreen, ScreenManager};
+use startup::{spawn_startup_task, StartupMode, StartupState};
 use std::time::Duration;
+use tokio::sync::watch;
 use widgets::{
     alerts::{render_alert_display, spawn_alert_update_task, AlertMode, AlertState},
     arrival::{
-        render_arrival_display, spawn_arrival_update_task,
-        ArrivalState, SimpleArrivalDisplayable,
+        render_arrival_display, spawn_arrival_update_task, ArrivalState, SimpleArrivalDisplayable,
     },
 };
-
 
 #[tokio::main]
 async fn main() {
     dotenv().ok();
     env_logger::init();
 
-    // let app = args::add_matrix_args(
-    //     App::new("C++ Library Example")
-    //         .about("shows basic usage of matrix arguments")
-    //         .version(crate_version!())
-    //         .arg(
-    //             arg!(--loops <LOOPS> "number of cycles to spin the line")
-    //                 .default_value("5")
-    //                 .required(false),
-    //         ),
-    // );
-    // let matches = app.get_matches();
-    // let (options, rt_options) = args::matrix_options_from_args(&matches);
-
-    // let matrix = LedMatrix::new(Some(options), Some(rt_options)).unwrap();
-    // let mut canvas = matrix.canvas();
-
-
     let mut manager = ScreenManager::init();
+
+    let (startup_tx, mut startup_rx) = watch::channel(StartupState::blank());
+    let startup_task = spawn_startup_task(startup_tx);
+
+    let mut startup_state: StartupState = StartupState::blank();
+    'startup: loop {
+        manager.clear();
+
+        let startup_res = startup_rx.has_changed();
+        if startup_res.is_ok() {
+            startup_state = startup_rx.borrow_and_update().clone();
+        }
+        if startup_state.mode == StartupMode::Done || startup_task.is_finished() {
+            break 'startup;
+        } else {
+            startup_state.render(&mut manager);
+        }
+
+        if manager.run_updates_should_exit() {
+            break 'startup;
+        }
+
+        #[cfg(feature = "simulator")]
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
 
     let mut loading_message: Vec<SimpleArrivalDisplayable> = Vec::new();
     loading_message.push(SimpleArrivalDisplayable::loading());
@@ -49,7 +57,7 @@ async fn main() {
         messages: loading_message,
         last_update: Utc::now(),
     });
-    spawn_arrival_update_task(arrival_tx);
+    spawn_arrival_update_task(arrival_tx); // TODO - auto restart
 
     let (alert_tx, mut alert_rx) = watch::channel(AlertState::blank());
     spawn_alert_update_task(alert_tx);
