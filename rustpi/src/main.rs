@@ -53,20 +53,32 @@ async fn main() {
 
     let mut loading_message: Vec<SimpleArrivalDisplayable> = Vec::new();
     loading_message.push(SimpleArrivalDisplayable::loading());
-    let (arrival_tx, mut arrival_rx) = watch::channel(ArrivalState {
+    let (mut arrival_tx, mut arrival_rx) = watch::channel(ArrivalState {
         messages: loading_message,
         last_update: Utc::now(),
     });
-    spawn_arrival_update_task(arrival_tx); // TODO - auto restart
+    let mut arrival_update_task = spawn_arrival_update_task(arrival_tx);
 
-    let (alert_tx, mut alert_rx) = watch::channel(AlertState::blank());
-    spawn_alert_update_task(alert_tx);
+    let (mut alert_tx, mut alert_rx) = watch::channel(AlertState::blank());
+    let mut alert_update_task = spawn_alert_update_task(alert_tx);
 
     'running: loop {
         manager.clear();
-
         let mut messages: Vec<SimpleArrivalDisplayable> = Vec::new();
         let mut alert_state: AlertState = AlertState::blank();
+        
+        // Check if threads have exited (probably in error)
+        if arrival_update_task.is_finished() {
+            (arrival_tx, arrival_rx) = watch::channel(ArrivalState {
+                messages: Vec::new(),
+                last_update: Utc::now(),
+            });
+            arrival_update_task = spawn_arrival_update_task(arrival_tx);
+        }
+        if alert_update_task.is_finished() {
+            (alert_tx, alert_rx) = watch::channel(AlertState::blank());
+            alert_update_task = spawn_alert_update_task(alert_tx);
+        }
 
         let arrival_res = arrival_rx.has_changed();
         if arrival_res.is_ok() {
