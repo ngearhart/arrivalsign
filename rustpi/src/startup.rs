@@ -58,9 +58,14 @@ impl StartupState {
             StartupMode::WelcomeIn => draw_welcome_in(manager, self.scroll_index),
             StartupMode::WelcomeStatic => draw_welcome_text(manager, true),
             StartupMode::WelcomeOut => draw_welcome_out(manager, self.scroll_index),
-            StartupMode::NetworkConnecting => draw_network_connecting(manager),
+            StartupMode::NetworkConnecting => draw_network_connecting(manager, self.scroll_index as f32 / 100.0),
             StartupMode::NetworkStatus => {
-                draw_network_with_ip(manager, self.discovered_ip.clone().unwrap())
+                debug!("SI: {}", self.scroll_index);
+                if self.scroll_index <= 100 {
+                    draw_network_with_ip(manager, self.discovered_ip.clone().unwrap(), self.scroll_index as f32 / 100.0, 1.0);
+                } else {
+                    draw_network_with_ip(manager, self.discovered_ip.clone().unwrap(), 2.0 - (self.scroll_index as f32 / 100.0), 2.0 - (self.scroll_index as f32 / 100.0));
+                }
             }
             StartupMode::Hidden => (),
             StartupMode::Done => (),
@@ -261,7 +266,7 @@ fn draw_welcome_out(manager: &mut ScreenManager, i: u32) {
     .unwrap();
 }
 
-fn draw_network_connecting(manager: &mut ScreenManager) {
+fn draw_network_connecting(manager: &mut ScreenManager, opacity: f32) {
     let centered_textbox_style = TextBoxStyleBuilder::new()
         .height_mode(HeightMode::Exact(
             embedded_text::style::VerticalOverdraw::Visible,
@@ -277,14 +282,22 @@ fn draw_network_connecting(manager: &mut ScreenManager) {
             Point::new(0, 0),
             Point::new(SCREEN_WIDTH as i32, SCREEN_HEIGHT as i32 / 2),
         ),
-        MonoTextStyle::new(&FONT_6X10, Rgb888::new(0x84, 0xD2, 0xF6)),
+        MonoTextStyle::new(&FONT_6X10, get_color_with_opacity(Rgb888::new(0x84, 0xD2, 0xF6), opacity)),
         centered_textbox_style,
     )
     .draw(manager.get_canvas())
     .unwrap();
 }
 
-fn draw_network_with_ip(manager: &mut ScreenManager, ip: String) {
+fn get_color_with_opacity(color: Rgb888, opacity: f32) -> Rgb888 {
+    return Rgb888::new(
+        (color.r() as f32 * opacity).round() as u8,
+        (color.g() as f32 * opacity).round() as u8,
+        (color.b() as f32 * opacity).round() as u8,
+    )
+}
+
+fn draw_network_with_ip(manager: &mut ScreenManager, ip: String, in_opacity: f32, out_opacity: f32) {
     let centered_textbox_style = TextBoxStyleBuilder::new()
         .height_mode(HeightMode::Exact(
             embedded_text::style::VerticalOverdraw::Visible,
@@ -299,7 +312,7 @@ fn draw_network_with_ip(manager: &mut ScreenManager, ip: String) {
             Point::new(0, 0),
             Point::new(SCREEN_WIDTH as i32, SCREEN_HEIGHT as i32 / 2),
         ),
-        MonoTextStyle::new(&FONT_6X10, Rgb888::new(0x84, 0xD2, 0xF6)),
+        MonoTextStyle::new(&FONT_6X10, get_color_with_opacity(Rgb888::new(0x84, 0xD2, 0xF6), out_opacity)),
         centered_textbox_style,
     )
     .draw(manager.get_canvas())
@@ -311,7 +324,7 @@ fn draw_network_with_ip(manager: &mut ScreenManager, ip: String) {
             Point::new(0, SCREEN_HEIGHT as i32 / 2),
             Point::new(SCREEN_WIDTH as i32, SCREEN_HEIGHT as i32),
         ),
-        MonoTextStyle::new(&FONT_6X10, Rgb888::new(0xD7, 0xB3, 0x77)),
+        MonoTextStyle::new(&FONT_6X10, get_color_with_opacity(Rgb888::new(0xD7, 0xB3, 0x77), in_opacity)),
         centered_textbox_style,
     )
     .draw(manager.get_canvas())
@@ -353,11 +366,22 @@ pub fn spawn_startup_task(state_tx: Sender<StartupState>) -> JoinHandle<()> {
         }
 
         debug!(target: "startup_state_update", "Running network");
+        for i in 0..50 {
+            state_tx
+                .send(StartupState {
+                    mode: StartupMode::NetworkConnecting,
+                    discovered_ip: None,
+                    scroll_index: i * 2,
+                })
+                .unwrap();
+            tokio::time::sleep(Duration::from_millis(15)).await;
+        }
+
         state_tx
             .send(StartupState {
                 mode: StartupMode::NetworkConnecting,
                 discovered_ip: None,
-                scroll_index: 0,
+                scroll_index: 100,
             })
             .unwrap();
         tokio::time::sleep(Duration::from_secs(2)).await;
@@ -375,15 +399,37 @@ pub fn spawn_startup_task(state_tx: Sender<StartupState>) -> JoinHandle<()> {
             if discovered_ip.is_some() {
                 info!(target: "startup_state_update", "IP Address: {}", discovered_ip.unwrap().addr);
 
+                for i in 0..50 {
+                    state_tx
+                        .send(StartupState {
+                            mode: StartupMode::NetworkStatus,
+                            discovered_ip: Some(discovered_ip.unwrap().addr.to_string()),
+                            scroll_index: i * 2,
+                        })
+                        .unwrap();
+                    tokio::time::sleep(Duration::from_millis(15)).await;
+                }
+
                 state_tx
                     .send(StartupState {
                         mode: StartupMode::NetworkStatus,
                         discovered_ip: Some(discovered_ip.unwrap().addr.to_string()),
-                        scroll_index: 0,
+                        scroll_index: 100,
                     })
                     .unwrap();
 
                 tokio::time::sleep(Duration::from_secs(5)).await;
+    
+                for i in 50..100 {
+                    state_tx
+                        .send(StartupState {
+                            mode: StartupMode::NetworkStatus,
+                            discovered_ip: Some(discovered_ip.unwrap().addr.to_string()),
+                            scroll_index: i * 2,
+                        })
+                        .unwrap();
+                    tokio::time::sleep(Duration::from_millis(15)).await;
+                }
                 break;
             } else {
                 tokio::time::sleep(Duration::from_secs(2)).await;
