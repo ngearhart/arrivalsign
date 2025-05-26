@@ -7,12 +7,35 @@ use sysinfo::Networks;
 
 use crate::{led::{DrawableScreen, ScreenManager}, widgets::{SCREEN_HEIGHT, SCREEN_WIDTH}};
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum StartupMode {
+    WelcomeIn,
+    WelcomeStatic,
+    WelcomeOut,
+    Network,
+    Hidden,
+}
+
+#[derive(Clone, Debug)]
+pub struct StartupState {
+    pub mode: StartupMode,
+    scroll_index: u32,
+}
+
+impl StartupState {
+    pub fn blank() -> Self {
+        StartupState {
+            mode: StartupMode::Hidden,
+            scroll_index: 0,
+        }
+    }
+}
 
 fn ease_out_cubic(x: f32, scaling_limit: f32) -> u32 {
     ((1.0 - (1.0 - x / scaling_limit).powf(3.0)) * scaling_limit).round() as u32
 }
 
-fn draw_welcome_text(manager: &mut ScreenManager) {
+fn draw_welcome_text(manager: &mut ScreenManager, include_bg: bool) {
     let centered_textbox_style = TextBoxStyleBuilder::new()
         .height_mode(HeightMode::Exact(
             embedded_text::style::VerticalOverdraw::Visible,
@@ -27,6 +50,17 @@ fn draw_welcome_text(manager: &mut ScreenManager) {
     let small_character_style = MonoTextStyle::new(&FONT_5X7, character_style_target_color);
     let bottom_corner = Point::new(SCREEN_WIDTH as i32, SCREEN_HEIGHT as i32);
     let top_corner = Point::new(0, 0);
+    let box_3_style = PrimitiveStyle::with_fill(Rgb888::new(0x64, 0x45, 0x36));
+
+    if include_bg {
+        Rectangle::with_corners(
+            top_corner,
+            bottom_corner
+        )
+            .into_styled(box_3_style)
+            .draw(manager.get_canvas())
+            .unwrap();
+    }
 
     TextBox::with_textbox_style(
         "WMATA Metrorail Arrival Sign",
@@ -63,7 +97,7 @@ fn draw_welcome_text(manager: &mut ScreenManager) {
     .unwrap();
 }
 
-pub async fn welcome(manager: &mut ScreenManager) {
+fn draw_welcome_in(manager: &mut ScreenManager, i: u32) {
     let black_style = PrimitiveStyle::with_fill(Rgb888::BLACK);
     let box_1_style = PrimitiveStyle::with_fill(Rgb888::new(0x49, 0x47, 0x5B));
     let box_2_style = PrimitiveStyle::with_fill(Rgb888::new(0x79, 0x94, 0x96));
@@ -72,56 +106,96 @@ pub async fn welcome(manager: &mut ScreenManager) {
     let bottom_corner = Point::new(SCREEN_WIDTH as i32, SCREEN_HEIGHT as i32);
     let top_corner = Point::new(0, 0);
 
-    for i in 0..SCREEN_HEIGHT * 3 {
-        manager.clear();
-
-        Rectangle::with_corners(
-            Point::new(0, SCREEN_HEIGHT as i32 - ease_out_cubic((i as f32 / 2.0) - 20.0, SCREEN_HEIGHT as f32) as i32), 
-            bottom_corner
-        )
-            .into_styled(box_3_style)
-            .draw(manager.get_canvas())
-            .unwrap();
-
-        draw_welcome_text(manager);
-
-        Rectangle::with_corners(
-            top_corner, 
-            Point::new(SCREEN_WIDTH as i32, SCREEN_HEIGHT as i32 - ease_out_cubic(i as f32 / 2.0, SCREEN_HEIGHT as f32) as i32)
-        )
-            .into_styled(black_style)
-            .draw(manager.get_canvas())
-            .unwrap();
-
-        Rectangle::with_corners(
-            Point::new(0, SCREEN_HEIGHT as i32 - ease_out_cubic(i as f32 / 2.0, SCREEN_HEIGHT as f32) as i32), 
-            Point::new(SCREEN_WIDTH as i32, SCREEN_HEIGHT as i32 - ease_out_cubic((i as f32 / 2.0) - 10.0, SCREEN_HEIGHT as f32) as i32)
-        )
-            .into_styled(box_1_style)
-            .draw(manager.get_canvas())
-            .unwrap();
-
-        Rectangle::with_corners(
-            Point::new(0, SCREEN_HEIGHT as i32 - ease_out_cubic((i as f32 / 2.0) - 10.0, SCREEN_HEIGHT as f32) as i32), 
-            Point::new(SCREEN_WIDTH as i32, SCREEN_HEIGHT as i32 - ease_out_cubic((i as f32 / 2.0) - 20.0, SCREEN_HEIGHT as f32) as i32 - 1)
-        )
-            .into_styled(box_2_style)
-            .draw(manager.get_canvas())
-            .unwrap();
-
-        manager.run_updates_should_exit();
-        tokio::time::sleep(Duration::from_nanos(100)).await;
-    }
-
-    manager.clear();
     Rectangle::with_corners(
-        top_corner,
+        Point::new(0, SCREEN_HEIGHT as i32 - ease_out_cubic((i as f32 / 2.0) - 20.0, SCREEN_HEIGHT as f32) as i32), 
         bottom_corner
     )
         .into_styled(box_3_style)
         .draw(manager.get_canvas())
         .unwrap();
-    draw_welcome_text(manager);
+
+    draw_welcome_text(manager, false);
+
+    Rectangle::with_corners(
+        top_corner, 
+        Point::new(SCREEN_WIDTH as i32, SCREEN_HEIGHT as i32 - ease_out_cubic(i as f32 / 2.0, SCREEN_HEIGHT as f32) as i32)
+    )
+        .into_styled(black_style)
+        .draw(manager.get_canvas())
+        .unwrap();
+
+    Rectangle::with_corners(
+        Point::new(0, SCREEN_HEIGHT as i32 - ease_out_cubic(i as f32 / 2.0, SCREEN_HEIGHT as f32) as i32), 
+        Point::new(SCREEN_WIDTH as i32, SCREEN_HEIGHT as i32 - ease_out_cubic((i as f32 / 2.0) - 10.0, SCREEN_HEIGHT as f32) as i32)
+    )
+        .into_styled(box_1_style)
+        .draw(manager.get_canvas())
+        .unwrap();
+
+    Rectangle::with_corners(
+        Point::new(0, SCREEN_HEIGHT as i32 - ease_out_cubic((i as f32 / 2.0) - 10.0, SCREEN_HEIGHT as f32) as i32), 
+        Point::new(SCREEN_WIDTH as i32, SCREEN_HEIGHT as i32 - ease_out_cubic((i as f32 / 2.0) - 20.0, SCREEN_HEIGHT as f32) as i32 - 1)
+    )
+        .into_styled(box_2_style)
+        .draw(manager.get_canvas())
+        .unwrap();
+}
+
+fn draw_welcome_out(manager: &mut ScreenManager, i: u32) {
+    let black_style = PrimitiveStyle::with_fill(Rgb888::BLACK);
+    let box_1_style = PrimitiveStyle::with_fill(Rgb888::new(0x49, 0x47, 0x5B));
+    let box_2_style = PrimitiveStyle::with_fill(Rgb888::new(0x79, 0x94, 0x96));
+    let box_3_style = PrimitiveStyle::with_fill(Rgb888::new(0x64, 0x45, 0x36));
+
+    let bottom_corner = Point::new(SCREEN_WIDTH as i32, SCREEN_HEIGHT as i32);
+    let top_corner = Point::new(0, 0);
+
+    Rectangle::with_corners(
+        top_corner, 
+        Point::new(SCREEN_WIDTH as i32, SCREEN_HEIGHT as i32 - ease_out_cubic(i as f32 / 2.0, SCREEN_HEIGHT as f32) as i32)
+    )
+        .into_styled(box_3_style)
+        .draw(manager.get_canvas())
+        .unwrap();
+
+    draw_welcome_text(manager, false);
+
+    Rectangle::with_corners(
+        Point::new(0, SCREEN_HEIGHT as i32 - ease_out_cubic((i as f32 / 2.0) - 10.0, SCREEN_HEIGHT as f32) as i32), 
+        Point::new(SCREEN_WIDTH as i32, SCREEN_HEIGHT as i32 - ease_out_cubic((i as f32 / 2.0)  - 20.0, SCREEN_HEIGHT as f32) as i32)
+    )
+        .into_styled(box_1_style)
+        .draw(manager.get_canvas())
+        .unwrap();
+
+    Rectangle::with_corners(
+        Point::new(0, SCREEN_HEIGHT as i32 - ease_out_cubic(i as f32 / 2.0, SCREEN_HEIGHT as f32) as i32), 
+        Point::new(SCREEN_WIDTH as i32, SCREEN_HEIGHT as i32 - ease_out_cubic((i as f32 / 2.0) - 10.0, SCREEN_HEIGHT as f32) as i32)
+    )
+        .into_styled(box_2_style)
+        .draw(manager.get_canvas())
+        .unwrap();
+
+    Rectangle::with_corners(
+        Point::new(0, SCREEN_HEIGHT as i32 - ease_out_cubic((i as f32 / 2.0)  - 20.0, SCREEN_HEIGHT as f32) as i32),
+        bottom_corner
+    )
+        .into_styled(black_style)
+        .draw(manager.get_canvas())
+        .unwrap();
+    
+}
+
+pub async fn welcome(manager: &mut ScreenManager) {
+    for i in 0..SCREEN_HEIGHT * 3 {
+        manager.clear();
+        draw_welcome_in(manager, i);
+        manager.run_updates_should_exit();
+        tokio::time::sleep(Duration::from_nanos(100)).await;
+    }
+
+    manager.clear();
+    draw_welcome_text(manager, true);
     manager.run_updates_should_exit();
 
     tokio::time::sleep(Duration::from_secs(5)).await;
@@ -129,42 +203,7 @@ pub async fn welcome(manager: &mut ScreenManager) {
     
     for i in 0..SCREEN_HEIGHT * 3 {
         manager.clear();
-
-        Rectangle::with_corners(
-            top_corner, 
-            Point::new(SCREEN_WIDTH as i32, SCREEN_HEIGHT as i32 - ease_out_cubic(i as f32 / 2.0, SCREEN_HEIGHT as f32) as i32)
-        )
-            .into_styled(box_3_style)
-            .draw(manager.get_canvas())
-            .unwrap();
-
-        draw_welcome_text(manager);
-
-        Rectangle::with_corners(
-            Point::new(0, SCREEN_HEIGHT as i32 - ease_out_cubic((i as f32 / 2.0) - 10.0, SCREEN_HEIGHT as f32) as i32), 
-            Point::new(SCREEN_WIDTH as i32, SCREEN_HEIGHT as i32 - ease_out_cubic((i as f32 / 2.0)  - 20.0, SCREEN_HEIGHT as f32) as i32)
-        )
-            .into_styled(box_1_style)
-            .draw(manager.get_canvas())
-            .unwrap();
-
-        Rectangle::with_corners(
-            Point::new(0, SCREEN_HEIGHT as i32 - ease_out_cubic(i as f32 / 2.0, SCREEN_HEIGHT as f32) as i32), 
-            Point::new(SCREEN_WIDTH as i32, SCREEN_HEIGHT as i32 - ease_out_cubic((i as f32 / 2.0) - 10.0, SCREEN_HEIGHT as f32) as i32)
-        )
-            .into_styled(box_2_style)
-            .draw(manager.get_canvas())
-            .unwrap();
-    
-        Rectangle::with_corners(
-            Point::new(0, SCREEN_HEIGHT as i32 - ease_out_cubic((i as f32 / 2.0)  - 20.0, SCREEN_HEIGHT as f32) as i32),
-            bottom_corner
-        )
-            .into_styled(black_style)
-            .draw(manager.get_canvas())
-            .unwrap();
-    
-
+        draw_welcome_out(manager, i);
         manager.run_updates_should_exit();
         tokio::time::sleep(Duration::from_nanos(100)).await;
     }
