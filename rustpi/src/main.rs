@@ -9,6 +9,7 @@ mod widgets;
 use chrono::Utc;
 use dotenv::dotenv;
 use led::{DrawableScreen, ScreenManager};
+use log::info;
 use startup::{spawn_startup_task, StartupMode, StartupState};
 use std::time::Duration;
 use tokio::sync::watch;
@@ -69,6 +70,7 @@ async fn main() {
         
         // Check if threads have exited (probably in error)
         if arrival_update_task.is_finished() {
+            info!(target: "main", "Detected arrival update task exited. Restarting...");
             (arrival_tx, arrival_rx) = watch::channel(ArrivalState {
                 messages: Vec::new(),
                 last_update: Utc::now(),
@@ -76,6 +78,7 @@ async fn main() {
             arrival_update_task = spawn_arrival_update_task(arrival_tx);
         }
         if alert_update_task.is_finished() {
+            info!(target: "main", "Detected alert update task exited. Restarting...");
             (alert_tx, alert_rx) = watch::channel(AlertState::blank());
             alert_update_task = spawn_alert_update_task(alert_tx);
         }
