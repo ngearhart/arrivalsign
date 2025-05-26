@@ -60,7 +60,6 @@ impl StartupState {
             StartupMode::WelcomeOut => draw_welcome_out(manager, self.scroll_index),
             StartupMode::NetworkConnecting => draw_network_connecting(manager, self.scroll_index as f32 / 100.0),
             StartupMode::NetworkStatus => {
-                debug!("SI: {}", self.scroll_index);
                 if self.scroll_index <= 100 {
                     draw_network_with_ip(manager, self.discovered_ip.clone().unwrap(), self.scroll_index as f32 / 100.0, 1.0);
                 } else {
