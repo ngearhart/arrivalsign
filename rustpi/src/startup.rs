@@ -1,10 +1,9 @@
-use std::{cmp::max, time::Duration};
+use std::time::Duration;
 
 use embedded_graphics::{
     mono_font::{
         ascii::{
-            FONT_5X7, FONT_6X10, FONT_6X13_BOLD, FONT_7X13_BOLD, FONT_7X14_BOLD, FONT_8X13_BOLD,
-            FONT_9X15_BOLD,
+            FONT_5X7, FONT_6X10, FONT_8X13_BOLD
         },
         MonoTextStyle,
     },
@@ -60,7 +59,9 @@ impl StartupState {
             StartupMode::WelcomeStatic => draw_welcome_text(manager, true),
             StartupMode::WelcomeOut => draw_welcome_out(manager, self.scroll_index),
             StartupMode::NetworkConnecting => draw_network_connecting(manager),
-            StartupMode::NetworkStatus => draw_network_with_ip(manager, self.discovered_ip.clone().unwrap()),
+            StartupMode::NetworkStatus => {
+                draw_network_with_ip(manager, self.discovered_ip.clone().unwrap())
+            }
             StartupMode::Hidden => (),
             StartupMode::Done => (),
         }
@@ -260,28 +261,6 @@ fn draw_welcome_out(manager: &mut ScreenManager, i: u32) {
     .unwrap();
 }
 
-pub async fn welcome(manager: &mut ScreenManager) {
-    for i in 0..SCREEN_HEIGHT * 3 {
-        manager.clear();
-        draw_welcome_in(manager, i);
-        manager.run_updates_should_exit();
-        tokio::time::sleep(Duration::from_nanos(100)).await;
-    }
-
-    manager.clear();
-    draw_welcome_text(manager, true);
-    manager.run_updates_should_exit();
-
-    tokio::time::sleep(Duration::from_secs(5)).await;
-
-    for i in 0..SCREEN_HEIGHT * 3 {
-        manager.clear();
-        draw_welcome_out(manager, i);
-        manager.run_updates_should_exit();
-        tokio::time::sleep(Duration::from_nanos(100)).await;
-    }
-}
-
 fn draw_network_connecting(manager: &mut ScreenManager) {
     let centered_textbox_style = TextBoxStyleBuilder::new()
         .height_mode(HeightMode::Exact(
@@ -339,37 +318,6 @@ fn draw_network_with_ip(manager: &mut ScreenManager, ip: String) {
     .unwrap();
 }
 
-pub async fn check_for_network(manager: &mut ScreenManager) {
-    manager.clear();
-    draw_network_connecting(manager);
-    manager.run_updates_should_exit();
-
-    tokio::time::sleep(Duration::from_secs(2)).await;
-    loop {
-        let networks = Networks::new_with_refreshed_list();
-        let discovered_ip = networks
-            .iter()
-            .flat_map(|iface| iface.1.ip_networks().iter())
-            .find(|ip_addr| {
-                ip_addr.addr.is_ipv4()
-                    && !ip_addr.addr.is_loopback()
-                    && !ip_addr.addr.to_string().starts_with("172")
-            });
-        if discovered_ip.is_some() {
-            info!(target: "startup", "IP Address: {}", discovered_ip.unwrap().addr);
-
-            manager.clear();
-            draw_network_with_ip(manager, discovered_ip.unwrap().addr.to_string());
-            manager.run_updates_should_exit();
-
-            tokio::time::sleep(Duration::from_secs(5)).await;
-            break;
-        } else {
-            tokio::time::sleep(Duration::from_secs(2)).await;
-        }
-    }
-}
-
 pub fn spawn_startup_task(state_tx: Sender<StartupState>) -> JoinHandle<()> {
     spawn(async move {
         debug!(target: "startup_state_update", "Running welcome");
@@ -381,7 +329,7 @@ pub fn spawn_startup_task(state_tx: Sender<StartupState>) -> JoinHandle<()> {
                     scroll_index: i,
                 })
                 .unwrap();
-            tokio::time::sleep(Duration::from_nanos(100)).await;
+            tokio::time::sleep(Duration::from_millis(15)).await;
         }
 
         state_tx
@@ -401,7 +349,7 @@ pub fn spawn_startup_task(state_tx: Sender<StartupState>) -> JoinHandle<()> {
                     scroll_index: i,
                 })
                 .unwrap();
-            tokio::time::sleep(Duration::from_nanos(100)).await;
+            tokio::time::sleep(Duration::from_millis(15)).await;
         }
 
         debug!(target: "startup_state_update", "Running network");
