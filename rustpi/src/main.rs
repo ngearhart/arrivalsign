@@ -9,7 +9,8 @@ mod startup;
 use chrono::Utc;
 use dotenv::dotenv;
 use led::{ DrawableScreen, ScreenManager};
-use startup::{check_for_network, welcome};
+use log::debug;
+use startup::{check_for_network, spawn_startup_task, welcome, StartupMode, StartupState};
 use tokio::sync::watch;
 use std::time::Duration;
 use widgets::{
@@ -27,8 +28,31 @@ async fn main() {
     env_logger::init();
 
     let mut manager = ScreenManager::init();
-    welcome(&mut manager).await;
-    check_for_network(&mut manager).await;
+
+    let (startup_tx, mut startup_rx) = watch::channel(StartupState::blank());
+    let startup_task = spawn_startup_task(startup_tx);
+
+    let mut startup_state: StartupState = StartupState::blank();
+    'startup: loop {
+        manager.clear();
+
+        let startup_res = startup_rx.has_changed();
+        if startup_res.is_ok() {
+            startup_state = startup_rx.borrow_and_update().clone();
+        }
+        if startup_state.mode == StartupMode::Done || startup_task.is_finished() {
+            break 'startup;
+        } else {
+            startup_state.render(&mut manager);
+        }
+    
+        if manager.run_updates_should_exit() {
+            break 'startup;
+        }
+
+        #[cfg(feature = "simulator")]
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
 
 
     let mut loading_message: Vec<SimpleArrivalDisplayable> = Vec::new();

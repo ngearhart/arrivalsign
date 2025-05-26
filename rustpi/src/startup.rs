@@ -18,8 +18,9 @@ use embedded_text::{
     style::{HeightMode, TextBoxStyleBuilder},
     TextBox,
 };
-use log::info;
+use log::{debug, info};
 use sysinfo::Networks;
+use tokio::{spawn, sync::watch::Sender, task::JoinHandle};
 
 use crate::{
     led::{DrawableScreen, ScreenManager},
@@ -34,6 +35,7 @@ pub enum StartupMode {
     NetworkConnecting,
     NetworkStatus,
     Hidden,
+    Done,
 }
 
 #[derive(Clone, Debug)]
@@ -49,6 +51,18 @@ impl StartupState {
             mode: StartupMode::Hidden,
             discovered_ip: None,
             scroll_index: 0,
+        }
+    }
+
+    pub fn render(self: &Self, manager: &mut ScreenManager) {
+        match self.mode {
+            StartupMode::WelcomeIn => draw_welcome_in(manager, self.scroll_index),
+            StartupMode::WelcomeStatic => draw_welcome_text(manager, true),
+            StartupMode::WelcomeOut => draw_welcome_out(manager, self.scroll_index),
+            StartupMode::NetworkConnecting => draw_network_connecting(manager),
+            StartupMode::NetworkStatus => draw_network_with_ip(manager, self.discovered_ip.clone().unwrap()),
+            StartupMode::Hidden => (),
+            StartupMode::Done => (),
         }
     }
 }
@@ -354,4 +368,87 @@ pub async fn check_for_network(manager: &mut ScreenManager) {
             tokio::time::sleep(Duration::from_secs(2)).await;
         }
     }
+}
+
+pub fn spawn_startup_task(state_tx: Sender<StartupState>) -> JoinHandle<()> {
+    spawn(async move {
+        debug!(target: "startup_state_update", "Running welcome");
+        for i in 0..SCREEN_HEIGHT * 3 {
+            state_tx
+                .send(StartupState {
+                    mode: StartupMode::WelcomeIn,
+                    discovered_ip: None,
+                    scroll_index: i,
+                })
+                .unwrap();
+            tokio::time::sleep(Duration::from_nanos(100)).await;
+        }
+
+        state_tx
+            .send(StartupState {
+                mode: StartupMode::WelcomeStatic,
+                discovered_ip: None,
+                scroll_index: 0,
+            })
+            .unwrap();
+        tokio::time::sleep(Duration::from_secs(5)).await;
+
+        for i in 0..SCREEN_HEIGHT * 3 {
+            state_tx
+                .send(StartupState {
+                    mode: StartupMode::WelcomeOut,
+                    discovered_ip: None,
+                    scroll_index: i,
+                })
+                .unwrap();
+            tokio::time::sleep(Duration::from_nanos(100)).await;
+        }
+
+        debug!(target: "startup_state_update", "Running network");
+        state_tx
+            .send(StartupState {
+                mode: StartupMode::NetworkConnecting,
+                discovered_ip: None,
+                scroll_index: 0,
+            })
+            .unwrap();
+        tokio::time::sleep(Duration::from_secs(2)).await;
+
+        loop {
+            let networks = Networks::new_with_refreshed_list();
+            let discovered_ip = networks
+                .iter()
+                .flat_map(|iface| iface.1.ip_networks().iter())
+                .find(|ip_addr| {
+                    ip_addr.addr.is_ipv4()
+                        && !ip_addr.addr.is_loopback()
+                        && !ip_addr.addr.to_string().starts_with("172")
+                });
+            if discovered_ip.is_some() {
+                info!(target: "startup_state_update", "IP Address: {}", discovered_ip.unwrap().addr);
+
+                state_tx
+                    .send(StartupState {
+                        mode: StartupMode::NetworkStatus,
+                        discovered_ip: Some(discovered_ip.unwrap().addr.to_string()),
+                        scroll_index: 0,
+                    })
+                    .unwrap();
+
+                tokio::time::sleep(Duration::from_secs(5)).await;
+                break;
+            } else {
+                tokio::time::sleep(Duration::from_secs(2)).await;
+            }
+        }
+
+        info!(target: "startup_state_update", "Startup done");
+        state_tx
+            .send(StartupState {
+                mode: StartupMode::Done,
+                discovered_ip: None,
+                scroll_index: 0,
+            })
+            .unwrap();
+    })
 }
