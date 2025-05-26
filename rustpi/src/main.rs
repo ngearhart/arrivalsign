@@ -9,9 +9,9 @@ mod widgets;
 use chrono::Utc;
 use dotenv::dotenv;
 use led::{DrawableScreen, ScreenManager};
-use log::info;
+use log::{debug, info};
 use startup::{spawn_startup_task, StartupMode, StartupState};
-use std::time::Duration;
+use std::{env, time::Duration};
 use tokio::sync::watch;
 use widgets::{
     alerts::{render_alert_display, spawn_alert_update_task, AlertMode, AlertState},
@@ -25,31 +25,43 @@ async fn main() {
     dotenv().ok();
     env_logger::init();
 
+    info!(target: "main", "Starting WMATA Metro Arrival Sign by Noah Gearhart");
+    
+    let args: Vec<String> = env::args().collect();
+    let skip_welcome = args.len() > 1 && args[1] == "--nowelcome";
+
+    debug!(target: "main", "Initializing screen");
     let mut manager = ScreenManager::init();
+    debug!(target: "main", "Done");
 
-    let (startup_tx, mut startup_rx) = watch::channel(StartupState::blank());
-    let startup_task = spawn_startup_task(startup_tx);
+    if skip_welcome {
+        info!(target: "main", "Skipping welcome");
+    } else {
+        info!(target: "main", "Running welcome sequence. Use `--nowelcome` argument to skip. In dev, use `cargo run -- --nowelcome`.");
+        let (startup_tx, mut startup_rx) = watch::channel(StartupState::blank());
+        let startup_task = spawn_startup_task(startup_tx);
 
-    let mut startup_state: StartupState = StartupState::blank();
-    'startup: loop {
-        manager.clear();
+        let mut startup_state: StartupState = StartupState::blank();
+        'startup: loop {
+            manager.clear();
 
-        let startup_res = startup_rx.has_changed();
-        if startup_res.is_ok() {
-            startup_state = startup_rx.borrow_and_update().clone();
+            let startup_res = startup_rx.has_changed();
+            if startup_res.is_ok() {
+                startup_state = startup_rx.borrow_and_update().clone();
+            }
+            if startup_state.mode == StartupMode::Done || startup_task.is_finished() {
+                break 'startup;
+            } else {
+                startup_state.render(&mut manager);
+            }
+
+            if manager.run_updates_should_exit() {
+                break 'startup;
+            }
+
+            #[cfg(feature = "simulator")]
+            tokio::time::sleep(Duration::from_millis(50)).await;
         }
-        if startup_state.mode == StartupMode::Done || startup_task.is_finished() {
-            break 'startup;
-        } else {
-            startup_state.render(&mut manager);
-        }
-
-        if manager.run_updates_should_exit() {
-            break 'startup;
-        }
-
-        #[cfg(feature = "simulator")]
-        tokio::time::sleep(Duration::from_millis(50)).await;
     }
 
     let mut loading_message: Vec<SimpleArrivalDisplayable> = Vec::new();
@@ -67,7 +79,7 @@ async fn main() {
         manager.clear();
         let mut messages: Vec<SimpleArrivalDisplayable> = Vec::new();
         let mut alert_state: AlertState = AlertState::blank();
-        
+
         // Check if threads have exited (probably in error)
         if arrival_update_task.is_finished() {
             info!(target: "main", "Detected arrival update task exited. Restarting...");
