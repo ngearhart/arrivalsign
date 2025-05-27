@@ -91,7 +91,7 @@ fn draw_welcome_text(manager: &mut ScreenManager, include_bg: bool) {
     let small_character_style = MonoTextStyle::new(&FONT_5X7, character_style_target_color);
     let bottom_corner = Point::new(SCREEN_WIDTH as i32, SCREEN_HEIGHT as i32);
     let top_corner = Point::new(0, 0);
-    let box_3_style = PrimitiveStyle::with_fill(Rgb888::new(0x64, 0x45, 0x36));
+    let box_3_style = PrimitiveStyle::with_fill(Rgb888::new(0xDB, 0xFE, 0xB8));
 
     if include_bg {
         Rectangle::with_corners(top_corner, bottom_corner)
@@ -136,7 +136,7 @@ fn draw_welcome_in(manager: &mut ScreenManager, i: u32) {
     let black_style = PrimitiveStyle::with_fill(Rgb888::BLACK);
     let box_1_style = PrimitiveStyle::with_fill(Rgb888::new(0x49, 0x47, 0x5B));
     let box_2_style = PrimitiveStyle::with_fill(Rgb888::new(0x79, 0x94, 0x96));
-    let box_3_style = PrimitiveStyle::with_fill(Rgb888::new(0x64, 0x45, 0x36));
+    let box_3_style = PrimitiveStyle::with_fill(Rgb888::new(0xDB, 0xFE, 0xB8));
 
     let bottom_corner = Point::new(SCREEN_WIDTH as i32, SCREEN_HEIGHT as i32);
     let top_corner = Point::new(0, 0);
@@ -203,7 +203,7 @@ fn draw_welcome_out(manager: &mut ScreenManager, i: u32) {
     let black_style = PrimitiveStyle::with_fill(Rgb888::BLACK);
     let box_1_style = PrimitiveStyle::with_fill(Rgb888::new(0x49, 0x47, 0x5B));
     let box_2_style = PrimitiveStyle::with_fill(Rgb888::new(0x79, 0x94, 0x96));
-    let box_3_style = PrimitiveStyle::with_fill(Rgb888::new(0x64, 0x45, 0x36));
+    let box_3_style = PrimitiveStyle::with_fill(Rgb888::new(0xDB, 0xFE, 0xB8));
 
     let bottom_corner = Point::new(SCREEN_WIDTH as i32, SCREEN_HEIGHT as i32);
     let top_corner = Point::new(0, 0);

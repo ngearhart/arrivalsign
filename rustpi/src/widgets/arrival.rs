@@ -498,7 +498,7 @@ where
         Point::new(0, LINE_HEIGHT_WITH_PADDING),
         Point::new(SCREEN_WIDTH as i32, LINE_HEIGHT_WITH_PADDING),
     )
-    .into_styled(PrimitiveStyle::with_fill(Rgb888::new(40, 40, 40)))
+    .into_styled(PrimitiveStyle::with_fill(Rgb888::new(80, 80, 80)))
     .draw(canvas)
     .unwrap();
 
