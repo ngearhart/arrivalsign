@@ -93,7 +93,7 @@ impl SimpleArrivalDisplayable {
             comparison_timestamp_no_sticky: Utc::now(),
             message: String::from("Loading..."),
             line: Line::UNKNOWN,
-            line_color: Rgb888::new(50, 50, 50),
+            line_color: Rgb888::new(80, 80, 80),
             leave: String::from(""),
             is_sticky: true,
             arrival_time: String::from(""),
