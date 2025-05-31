@@ -28,6 +28,7 @@ use crate::{
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum StartupMode {
+    Waiting,
     WelcomeIn,
     WelcomeStatic,
     WelcomeOut,
@@ -55,6 +56,7 @@ impl StartupState {
 
     pub fn render(self: &Self, manager: &mut ScreenManager) {
         match self.mode {
+            StartupMode::Waiting => draw_waiting(manager, self.scroll_index),
             StartupMode::WelcomeIn => draw_welcome_in(manager, self.scroll_index),
             StartupMode::WelcomeStatic => draw_welcome_text(manager, true),
             StartupMode::WelcomeOut => draw_welcome_out(manager, self.scroll_index),
@@ -74,6 +76,32 @@ impl StartupState {
 
 fn ease_out_cubic(x: f32, scaling_limit: f32) -> u32 {
     ((1.0 - (1.0 - x / scaling_limit).powf(3.0)) * scaling_limit).round() as u32
+}
+
+fn draw_waiting(manager: &mut ScreenManager, seconds: u32) {
+    let centered_textbox_style = TextBoxStyleBuilder::new()
+        .height_mode(HeightMode::Exact(
+            embedded_text::style::VerticalOverdraw::Visible,
+        ))
+        .vertical_alignment(embedded_text::alignment::VerticalAlignment::Middle)
+        .alignment(HorizontalAlignment::Center)
+        .paragraph_spacing(0)
+        .build();
+    let character_style_target_color = Rgb888::new(0x20, 0x20, 0x20);
+    let regular_character_style = MonoTextStyle::new(&FONT_6X10, character_style_target_color);
+    let bottom_corner = Point::new(SCREEN_WIDTH as i32, SCREEN_HEIGHT as i32);
+    let top_corner = Point::new(0, 0);
+        TextBox::with_textbox_style(
+        &format!("Waiting for power stability ({})", seconds),
+        Rectangle::with_corners(
+            top_corner,
+            bottom_corner,
+        ),
+        regular_character_style,
+        centered_textbox_style,
+    )
+    .draw(manager.get_canvas())
+    .unwrap();
 }
 
 fn draw_welcome_text(manager: &mut ScreenManager, include_bg: bool) {
@@ -330,9 +358,57 @@ fn draw_network_with_ip(manager: &mut ScreenManager, ip: String, in_opacity: f32
     .unwrap();
 }
 
-pub fn spawn_startup_task(state_tx: Sender<StartupState>) -> JoinHandle<()> {
+pub fn draw_boot(manager: &mut ScreenManager) {
+    manager.clear();
+    let centered_textbox_style = TextBoxStyleBuilder::new()
+    .height_mode(HeightMode::Exact(
+        embedded_text::style::VerticalOverdraw::Visible,
+    ))
+    .vertical_alignment(embedded_text::alignment::VerticalAlignment::Middle)
+    .alignment(HorizontalAlignment::Center)
+    .paragraph_spacing(0)
+    .build();
+    let character_style_target_color = Rgb888::new(0x20, 0x20, 0x20);
+    let regular_character_style = MonoTextStyle::new(&FONT_6X10, character_style_target_color);
+    let bottom_corner = Point::new(SCREEN_WIDTH as i32, SCREEN_HEIGHT as i32);
+    let top_corner = Point::new(0, 0);
+        TextBox::with_textbox_style(
+        &format!("Booting"),
+        Rectangle::with_corners(
+            top_corner,
+            bottom_corner,
+        ),
+        regular_character_style,
+        centered_textbox_style,
+    )
+    .draw(manager.get_canvas())
+    .unwrap();
+    manager.run_updates_should_exit();
+}
+
+pub fn spawn_startup_task(state_tx: Sender<StartupState>, wait_seconds: u32) -> JoinHandle<()> {
     spawn(async move {
         debug!(target: "startup_state_update", "Running welcome");
+        if wait_seconds > 0 {
+            for i in 0..wait_seconds {
+                state_tx
+                    .send(StartupState {
+                        mode: StartupMode::Waiting,
+                        discovered_ip: None,
+                        scroll_index: wait_seconds - i,
+                    })
+                    .unwrap();
+                tokio::time::sleep(Duration::from_secs(1)).await;
+            }
+            state_tx
+                .send(StartupState {
+                    mode: StartupMode::Hidden,
+                    discovered_ip: None,
+                    scroll_index: 0,
+                })
+                .unwrap();
+            tokio::time::sleep(Duration::from_secs(1)).await;
+        }
         for i in 0..SCREEN_HEIGHT * 3 {
             state_tx
                 .send(StartupState {

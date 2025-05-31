@@ -10,7 +10,7 @@ use chrono::Utc;
 use dotenv::dotenv;
 use led::{DrawableScreen, ScreenManager};
 use log::{debug, info};
-use startup::{spawn_startup_task, StartupMode, StartupState};
+use startup::{draw_boot, spawn_startup_task, StartupMode, StartupState};
 use std::{env, time::Duration};
 use tokio::sync::watch;
 use widgets::{
@@ -50,12 +50,17 @@ async fn main() {
     let mut manager = ScreenManager::init();
     debug!(target: "main", "Done");
 
+    if args.boot {
+        draw_boot(&mut manager);
+        return;
+    }
+
     if args.skip_welcome {
         info!(target: "main", "Skipping welcome");
     } else {
         info!(target: "main", "Running welcome sequence. Use `--skip-welcome` argument to skip. In dev, use `cargo run -- --skip-welcome`.");
         let (startup_tx, mut startup_rx) = watch::channel(StartupState::blank());
-        let startup_task = spawn_startup_task(startup_tx);
+        let startup_task = spawn_startup_task(startup_tx, args.delay_seconds.into());
 
         let mut startup_state: StartupState = StartupState::blank();
         'startup: loop {
