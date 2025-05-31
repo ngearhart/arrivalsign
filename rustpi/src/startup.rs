@@ -322,10 +322,29 @@ fn draw_network_connecting(manager: &mut ScreenManager, opacity: f32, spin: u32)
     .draw(manager.get_canvas())
     .unwrap();
 
+    let arc_spin_offset = 20;
+    let swing_component_1 = ((spin * 2) as f32).deg().to_radians().sin() * 40.0;
+    let swing_component_2 = (((spin + arc_spin_offset) * 2) as f32).deg().to_radians().sin() * 40.0;
+    let swing_component_3 = (((spin + arc_spin_offset + arc_spin_offset) * 2) as f32).deg().to_radians().sin() * 40.0;
+
+    let sweep = 180.0.deg();
+
     Arc::with_center(
         Point::new(SCREEN_WIDTH as i32 / 2, SCREEN_HEIGHT as i32 / 2), 
         10,
-        ((spin * 2) as f32).deg(), 180.0.deg())
+        (((spin + arc_spin_offset + arc_spin_offset) * 2) as f32 + swing_component_3).deg(), sweep)
+        .into_styled(PrimitiveStyle::with_stroke(get_color_with_opacity(Rgb888::BLUE, opacity), 1))
+        .draw(manager.get_canvas()).unwrap();
+    Arc::with_center(
+        Point::new(SCREEN_WIDTH as i32 / 2, SCREEN_HEIGHT as i32 / 2), 
+        10,
+        (((spin + arc_spin_offset) * 2) as f32 + swing_component_2).deg(), sweep)
+        .into_styled(PrimitiveStyle::with_stroke(get_color_with_opacity(Rgb888::YELLOW, opacity), 1))
+        .draw(manager.get_canvas()).unwrap();
+    Arc::with_center(
+        Point::new(SCREEN_WIDTH as i32 / 2, SCREEN_HEIGHT as i32 / 2), 
+        10,
+        ((spin * 2) as f32 + swing_component_1).deg(), sweep)
         .into_styled(PrimitiveStyle::with_stroke(get_color_with_opacity(Rgb888::WHITE, opacity), 1))
         .draw(manager.get_canvas()).unwrap();
 }
