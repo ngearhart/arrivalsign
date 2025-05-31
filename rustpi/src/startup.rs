@@ -9,9 +9,10 @@ use embedded_graphics::{
     },
     pixelcolor::Rgb888,
     prelude::{Point, Primitive, RgbColor},
-    primitives::{PrimitiveStyle, Rectangle},
+    primitives::{Arc, PrimitiveStyle, Rectangle},
     Drawable,
 };
+use embedded_graphics::geometry::AngleUnit;
 use embedded_text::{
     alignment::HorizontalAlignment,
     style::{HeightMode, TextBoxStyleBuilder},
@@ -60,7 +61,13 @@ impl StartupState {
             StartupMode::WelcomeIn => draw_welcome_in(manager, self.scroll_index),
             StartupMode::WelcomeStatic => draw_welcome_text(manager, true),
             StartupMode::WelcomeOut => draw_welcome_out(manager, self.scroll_index),
-            StartupMode::NetworkConnecting => draw_network_connecting(manager, self.scroll_index as f32 / 100.0),
+            StartupMode::NetworkConnecting => {
+                if self.scroll_index <= 100 {
+                    draw_network_connecting(manager, self.scroll_index as f32 / 100.0, self.scroll_index);
+                } else {
+                    draw_network_connecting(manager, 1.0, self.scroll_index % 180);
+                }
+            },
             StartupMode::NetworkStatus => {
                 if self.scroll_index <= 100 {
                     draw_network_with_ip(manager, self.discovered_ip.clone().unwrap(), self.scroll_index as f32 / 100.0, 1.0);
@@ -293,7 +300,7 @@ fn draw_welcome_out(manager: &mut ScreenManager, i: u32) {
     .unwrap();
 }
 
-fn draw_network_connecting(manager: &mut ScreenManager, opacity: f32) {
+fn draw_network_connecting(manager: &mut ScreenManager, opacity: f32, spin: u32) {
     let centered_textbox_style = TextBoxStyleBuilder::new()
         .height_mode(HeightMode::Exact(
             embedded_text::style::VerticalOverdraw::Visible,
@@ -314,6 +321,13 @@ fn draw_network_connecting(manager: &mut ScreenManager, opacity: f32) {
     )
     .draw(manager.get_canvas())
     .unwrap();
+
+    Arc::with_center(
+        Point::new(SCREEN_WIDTH as i32 / 2, SCREEN_HEIGHT as i32 / 2), 
+        10,
+        ((spin * 2) as f32).deg(), 180.0.deg())
+        .into_styled(PrimitiveStyle::with_stroke(get_color_with_opacity(Rgb888::WHITE, opacity), 1))
+        .draw(manager.get_canvas()).unwrap();
 }
 
 fn get_color_with_opacity(color: Rgb888, opacity: f32) -> Rgb888 {
@@ -391,6 +405,20 @@ pub async fn draw_boot(manager: &mut ScreenManager) {
     }
 }
 
+/// Spend 2 seconds spinning
+async fn run_network_connecting_spin(state_tx: &Sender<StartupState>) {
+    for i in 0..180 {
+        state_tx
+        .send(StartupState {
+            mode: StartupMode::NetworkConnecting,
+            discovered_ip: None,
+            scroll_index: i + 100,
+        })
+        .unwrap();
+        tokio::time::sleep(Duration::from_millis(11)).await;
+    }
+}
+
 pub fn spawn_startup_task(state_tx: Sender<StartupState>, wait_seconds: u32) -> JoinHandle<()> {
     spawn(async move {
         debug!(target: "startup_state_update", "Running welcome");
@@ -457,14 +485,7 @@ pub fn spawn_startup_task(state_tx: Sender<StartupState>, wait_seconds: u32) -> 
             tokio::time::sleep(Duration::from_millis(15)).await;
         }
 
-        state_tx
-            .send(StartupState {
-                mode: StartupMode::NetworkConnecting,
-                discovered_ip: None,
-                scroll_index: 100,
-            })
-            .unwrap();
-        tokio::time::sleep(Duration::from_secs(2)).await;
+        run_network_connecting_spin(&state_tx).await;
 
         loop {
             let networks = Networks::new_with_refreshed_list();
@@ -512,7 +533,7 @@ pub fn spawn_startup_task(state_tx: Sender<StartupState>, wait_seconds: u32) -> 
                 }
                 break;
             } else {
-                tokio::time::sleep(Duration::from_secs(2)).await;
+                run_network_connecting_spin(&state_tx).await;
             }
         }
 
