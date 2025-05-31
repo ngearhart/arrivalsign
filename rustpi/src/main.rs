@@ -20,24 +20,40 @@ use widgets::{
     },
 };
 
+use clap::Parser;
+
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct Args {
+    /// Skip the welcome sequence
+    #[arg(short, long)]
+    skip_welcome: bool,
+
+    /// Just show "booting" message and exit
+    #[arg(short, long)]
+    boot: bool,
+
+    /// Number of seconds to show "waiting for power stability"
+    #[arg(short, long, default_value_t = 0)]
+    delay_seconds: u8,
+}
+
 #[tokio::main]
 async fn main() {
     dotenv().ok();
     env_logger::init();
-
-    info!(target: "main", "Starting WMATA Metro Arrival Sign by Noah Gearhart");
+    let args = Args::parse();
     
-    let args: Vec<String> = env::args().collect();
-    let skip_welcome = args.len() > 1 && args[1] == "--nowelcome";
+    info!(target: "main", "Starting WMATA Metro Arrival Sign by Noah Gearhart");
 
     debug!(target: "main", "Initializing screen");
     let mut manager = ScreenManager::init();
     debug!(target: "main", "Done");
 
-    if skip_welcome {
+    if args.skip_welcome {
         info!(target: "main", "Skipping welcome");
     } else {
-        info!(target: "main", "Running welcome sequence. Use `--nowelcome` argument to skip. In dev, use `cargo run -- --nowelcome`.");
+        info!(target: "main", "Running welcome sequence. Use `--skip-welcome` argument to skip. In dev, use `cargo run -- --skip-welcome`.");
         let (startup_tx, mut startup_rx) = watch::channel(StartupState::blank());
         let startup_task = spawn_startup_task(startup_tx);
 
