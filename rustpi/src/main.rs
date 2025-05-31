@@ -80,9 +80,6 @@ async fn main() {
                 break 'startup;
             }
 
-            #[cfg(feature = "rpi")]
-            tokio::time::sleep(Duration::from_millis(5)).await;
-
             #[cfg(feature = "simulator")]
             tokio::time::sleep(Duration::from_millis(50)).await;
         }
@@ -137,9 +134,6 @@ async fn main() {
         if manager.run_updates_should_exit() {
             break 'running;
         }
-
-        #[cfg(feature = "rpi")]
-        tokio::time::sleep(Duration::from_millis(5)).await;
 
         #[cfg(feature = "simulator")]
         tokio::time::sleep(Duration::from_millis(50)).await;

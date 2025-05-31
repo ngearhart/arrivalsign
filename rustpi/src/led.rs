@@ -46,6 +46,7 @@ impl DrawableScreen<Canvas> for ScreenManager {
         self.canvas.fill(0, 0, 0);
     }
 
+    /// Blocks until end of frame on RPI, effectively doesn't block on simulator.
     fn run_updates_should_exit(&mut self) -> bool {
         self.canvas = self.matrix.update_on_vsync(self.canvas.clone());
 
@@ -89,6 +90,7 @@ impl DrawableScreen<SimulatorDisplay<Rgb888>> for ScreenManager {
         self.canvas.clear(Rgb888::BLACK).unwrap();
     }
 
+    /// Blocks until end of frame on RPI, effectively doesn't block on simulator.
     fn run_updates_should_exit(&mut self) -> bool {
         self.window.update(&self.canvas);
 
