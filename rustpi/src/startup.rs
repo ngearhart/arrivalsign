@@ -92,7 +92,7 @@ fn draw_waiting(manager: &mut ScreenManager, seconds: u32) {
     let bottom_corner = Point::new(SCREEN_WIDTH as i32, SCREEN_HEIGHT as i32);
     let top_corner = Point::new(0, 0);
         TextBox::with_textbox_style(
-        &format!("Waiting for power stability ({})", seconds),
+        &format!("Waiting for power stability\n{}s", seconds),
         Rectangle::with_corners(
             top_corner,
             bottom_corner,
