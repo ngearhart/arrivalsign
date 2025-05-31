@@ -1,7 +1,8 @@
 #!/bin/bash
 runscript(){
-    cd /root/arrivalsign/pi
-    python3 main.py
+    # must CD for .env
+    cd /root/arrivalsign/rustpi
+    /root/arrivalsign/rustpi/target/release/metrosign
 }
 
 until runscript; do

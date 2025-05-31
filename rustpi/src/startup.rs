@@ -87,7 +87,7 @@ fn draw_waiting(manager: &mut ScreenManager, seconds: u32) {
         .alignment(HorizontalAlignment::Center)
         .paragraph_spacing(0)
         .build();
-    let character_style_target_color = Rgb888::new(0x20, 0x20, 0x20);
+    let character_style_target_color = Rgb888::new(80, 80, 80);
     let regular_character_style = MonoTextStyle::new(&FONT_6X10, character_style_target_color);
     let bottom_corner = Point::new(SCREEN_WIDTH as i32, SCREEN_HEIGHT as i32);
     let top_corner = Point::new(0, 0);
@@ -368,7 +368,7 @@ pub fn draw_boot(manager: &mut ScreenManager) {
     .alignment(HorizontalAlignment::Center)
     .paragraph_spacing(0)
     .build();
-    let character_style_target_color = Rgb888::new(0x20, 0x20, 0x20);
+    let character_style_target_color = Rgb888::new(80, 80, 80);
     let regular_character_style = MonoTextStyle::new(&FONT_6X10, character_style_target_color);
     let bottom_corner = Point::new(SCREEN_WIDTH as i32, SCREEN_HEIGHT as i32);
     let top_corner = Point::new(0, 0);
