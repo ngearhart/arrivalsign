@@ -9,7 +9,9 @@ mod widgets;
 use chrono::Utc;
 use dotenv::dotenv;
 use led::{DrawableScreen, ScreenManager};
-use log::{debug, info};
+use log::{debug, info, warn};
+
+use thread_priority::{set_current_thread_priority, ThreadPriority};
 use startup::{draw_boot, spawn_startup_task, StartupMode, StartupState};
 use std::{env, time::Duration};
 use tokio::sync::watch;
@@ -53,6 +55,10 @@ async fn main() {
     if args.boot {
         draw_boot(&mut manager).await;
         return;
+    }
+
+    if set_current_thread_priority(ThreadPriority::Max).is_err() {
+        warn!("Could not set thread priority. This might lead to reduced performance.");
     }
 
     if args.skip_welcome {

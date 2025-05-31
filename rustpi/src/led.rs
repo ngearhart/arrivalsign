@@ -1,7 +1,7 @@
 #[cfg(feature = "rpi")]
 use rpi_led_panel::{Canvas, HardwareMapping, NamedPixelMapperType, RGBMatrix, RGBMatrixConfig};
 
-use std::fmt::Debug;
+use std::{fmt::Debug, ops::DerefMut};
 
 #[cfg(feature = "simulator")]
 use embedded_graphics::prelude::RgbColor;
