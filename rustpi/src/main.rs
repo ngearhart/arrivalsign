@@ -51,7 +51,7 @@ async fn main() {
     debug!(target: "main", "Done");
 
     if args.boot {
-        draw_boot(&mut manager);
+        draw_boot(&mut manager).await;
         return;
     }
 

@@ -358,7 +358,7 @@ fn draw_network_with_ip(manager: &mut ScreenManager, ip: String, in_opacity: f32
     .unwrap();
 }
 
-pub fn draw_boot(manager: &mut ScreenManager) {
+pub async fn draw_boot(manager: &mut ScreenManager) {
     manager.clear();
     let centered_textbox_style = TextBoxStyleBuilder::new()
     .height_mode(HeightMode::Exact(
@@ -384,6 +384,7 @@ pub fn draw_boot(manager: &mut ScreenManager) {
     .draw(manager.get_canvas())
     .unwrap();
     manager.run_updates_should_exit();
+    tokio::time::sleep(Duration::from_secs(5)).await;
 }
 
 pub fn spawn_startup_task(state_tx: Sender<StartupState>, wait_seconds: u32) -> JoinHandle<()> {
