@@ -383,8 +383,8 @@ pub async fn draw_boot(manager: &mut ScreenManager) {
     )
     .draw(manager.get_canvas())
     .unwrap();
-    // 60 seconds ish - found by trial and error
-    for _ in 0..8000 {
+    // 5 seconds ish - found by trial and error
+    for _ in 0..500 {
         manager.run_updates_should_exit();
         // 120 fps = 8 millis
         tokio::time::sleep(Duration::from_millis(5)).await;
