@@ -62,7 +62,7 @@ impl DrawableScreen<Canvas> for ScreenManager {
         config.pixelmapper = vec![NamedPixelMapperType::UMapper];
         // config.refresh_rate = 60;
         // config.pwm_lsb_nanoseconds = 300;
-        config.pwm_bits = 4;  // this is the most meaningful setting to prevent flicker
+        config.pwm_bits = 5;  // this is the most meaningful setting to prevent flicker
         // config.dither_bits = 1;
         // config.led_brightness = 50;
 
