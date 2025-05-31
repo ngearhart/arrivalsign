@@ -383,8 +383,12 @@ pub async fn draw_boot(manager: &mut ScreenManager) {
     )
     .draw(manager.get_canvas())
     .unwrap();
-    manager.run_updates_should_exit();
-    tokio::time::sleep(Duration::from_secs(5)).await;
+    // 30 seconds
+    for _ in 0..6000 {
+        manager.run_updates_should_exit();
+        // 120 fps = 8 millis
+        tokio::time::sleep(Duration::from_millis(5)).await;
+    }
 }
 
 pub fn spawn_startup_task(state_tx: Sender<StartupState>, wait_seconds: u32) -> JoinHandle<()> {
