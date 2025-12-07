@@ -2,7 +2,7 @@ import { initializeApp } from 'firebase/app'
 
 export const firebaseApp = initializeApp({
     apiKey: "AIzaSyCyT8dhe_8Y4OiJ7QuYc9aknq3jF2flDKU",
-    authDomain: "arrivalsign.firebaseapp.com",
+    authDomain: "arrivalsign.noahgearhart.com",
     databaseURL: "https://arrivalsign-default-rtdb.firebaseio.com",
     projectId: "arrivalsign",
     storageBucket: "arrivalsign.appspot.com",
